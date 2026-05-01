@@ -26,14 +26,15 @@ checkboxes. German umlauts (`ä ö ü Ä Ö Ü ß`) round-trip fine.
 
 ### Defence
 
-`output.py` exposes `_safe_text()` and `_safe_tag_content()`, applied to
-every dynamically composed string in the output: tag bodies of
-`[QA]/[QT]/[QC]/[TAR]`, the `*Name*:` italic prefix on QC steps, cluster
-headers, the chain index, and `[N]/[D]` titles. `_PUNCT_REPLACEMENTS`
-maps the known offenders to ASCII; everything else outside ASCII (other
-than the umlaut whitelist `_ALLOWED_UTF8`) is dropped silently. When you
-add a new output site, channel the dynamic value through one of those
-helpers — never inline a raw `q['name']` straight into a Lua string.
+`output/sanitize.py` exposes `safe_text()` and `safe_tag_content()`,
+applied to every dynamically composed string in the output: tag bodies
+of `[QA]/[QT]/[QC]/[TAR]`, the `*Name*:` italic prefix on QC steps,
+cluster headers, the chain index, and `[N]/[D]` titles.
+`_PUNCT_REPLACEMENTS` maps the known offenders to ASCII; everything else
+outside ASCII (other than the umlaut whitelist `_ALLOWED_UTF8`) is
+dropped silently. When you add a new output site, channel the dynamic
+value through one of those helpers — never inline a raw `q['name']`
+straight into a Lua string.
 
 ### Pre-commit check
 
@@ -56,11 +57,11 @@ empty checkbox or a broken render.
 ### Defence
 
 - **Quest names**: quests whose name starts with `[OLD]` / `[DEP]` /
-  `[UNUSED]` are dropped at the source in `quests.py:_build_quest_dict`
+  `[UNUSED]` are dropped at the source in `quests/builder.py:build_quest_dict`
   (constant `DEPRECATED_PREFIXES`).
 - **NPC names**: kept in the DB (filtering them by name is fragile) but
-  passed through `_safe_tag_content` in `output.py`, which replaces
-  `[` with `(` and `]` with `)` before they enter a TAR tag.
+  passed through `safe_tag_content` (`output/sanitize.py`), which
+  replaces `[` with `(` and `]` with `)` before they enter a TAR tag.
 
 When pulling text from a new source (a future Questie patch, a different
 DB), do not assume names are tag-safe. Always go through the sanitiser.
@@ -104,11 +105,11 @@ inventory — there is no NPC pickup, just an item drop. Example: Q6981
 
 - `zones.py:assign_primary_zone` cascades pickup -> turnin -> zoneOrSort
   so item-drop bridges fall back to their turnin zone.
-- `routing.py:is_feasible` skips the QA check when `pickup_coords` is
-  missing — the QC and QT are then directly feasible (the pickup is
-  implicit).
-- `coords.py:get_npc_coords` falls back to a dungeon entrance when an
-  NPC has no world coords but its zone or NPC id is in
+- `routing/feasibility.py:is_feasible` skips the QA check when
+  `pickup_coords` is missing — the QC and QT are then directly feasible
+  (the pickup is implicit).
+- `coords/resolve.py:get_npc_coords` falls back to a dungeon entrance
+  when an NPC has no world coords but its zone or NPC id is in
   `DUNGEON_ENTRANCES` / `DUNGEON_BOSS_NPCS`. Used when the source item
   drops from a dungeon boss (Mutanus -> Wailing Caverns, etc.).
 
@@ -158,12 +159,12 @@ Three cases:
 
 ### Defence
 
-- `quests.py:drop_unreachable_bridge_chains` -> `_extract_in_zone_subset`
-  + `_identify_solo_cross_zone`.
-- `quests.py:attribute_complex_to_zones` assigns each complex component
-  to the pickup zone of its entry quest.
-- `output.py:_emit_complex_section` appends the complex tour at the end
-  of the matching zone's sub-guide.
+- `quests/classify.py:drop_unreachable_bridge_chains` ->
+  `_extract_in_zone_subset` + `_identify_solo_cross_zone`.
+- `quests/classify.py:attribute_complex_to_zones` assigns each complex
+  component to the pickup zone of its entry quest.
+- `output/sub_guide.py:_emit_complex_section` appends the complex tour
+  at the end of the matching zone's sub-guide.
 
 ### Consistency check after filter changes
 
@@ -180,7 +181,8 @@ a tag would be ambiguous to the parser.
 
 ### Defence
 
-`output.py` always emits `race_class_tag` after the closing `]` of the
+The `GuideEmitter` (`output/emitter.py`) always emits the
+`race_class_tag` (`output/tags.py`) after the closing `]` of the
 QA/QT/QC tag, never inside it.
 
 ---
@@ -226,9 +228,9 @@ GuideLime interpreted that as a tag and crashed.
 
 ### Defence
 
-`output.py:_quest_annotations` only uses round parentheses. Square
-brackets are reserved for GuideLime tag syntax — never use them for
-human-readable annotations.
+`GuideEmitter._quest_annotations` (`output/emitter.py`) only uses
+round parentheses. Square brackets are reserved for GuideLime tag
+syntax — never use them for human-readable annotations.
 
 ---
 
@@ -309,7 +311,8 @@ bucketing changes:
 The KPIs that matter most: `Global ø Score`, `Global Efficiency`,
 `Total Distance`, `X-Jumps`, `Absorption Rate`. The cluster constants
 mostly affect absorption — actual distance reductions come from the
-2-opt post-pass.
+alternating 2-opt + or-opt refinement passes (`routing/two_opt.py`
+and `routing/or_opt.py`, alternated by `routing/tour.py`).
 
 ### Diff snippet
 
@@ -340,16 +343,25 @@ for k in b:
 
 ### Constants sensitivity (from earlier experiments)
 
-- `CLUSTER_RADIUS` (default in `routing.py`, override per zone via
+- `CLUSTER_RADIUS` (default in `routing/tour.py`, override per zone via
   `ZONE_CLUSTER_RADIUS`): mostly changes absorption rate. Tests at 5/8/12
   yielded scores 68.4/69.3/70.4. R=12 is the sweet spot for dense zones;
   larger values mix city and field stops.
 - `ZONE_CLUSTER_RADIUS`: only useful for sparse zones (raise it). Going
   below the default for dense zones makes things worse — only tune up.
-- `DETOUR_THRESHOLD`: minimal effect between 6 and 10. Leave at 6.
+- `DETOUR_THRESHOLD`: **dead knob** — sweep 4/6/8/10/12 produces
+  identical KPIs (cluster discovery already absorbs anything closer
+  than `CLUSTER_RADIUS=12`, and the absorption corridor is too narrow
+  beyond that for the threshold to matter). Leave at 6.
+- `JUMP_PENALTY` (`routing/two_opt.py`): tuning is a real trade-off,
+  not a free win. JP=30 lowers distance by ~3.7% but raises X-Jumps by
+  ~10%, which is more painful for the player than the score reflects.
+  JP=60+ flips the trade the other way and converges by 75. JP=45
+  remains the production value.
 - Path distance `N-Dist` does not move much for cluster/detour tuning —
   the stops are the stops, just labelled differently. Real distance
-  reductions need an algorithmic change like the 2-opt post-pass.
+  reductions need an algorithmic change like the 2-opt + or-opt
+  refinement loop.
 
 ### Per-zone radius from data
 
@@ -382,10 +394,22 @@ recommended radius is above 12.
 
 ---
 
-## 14. Pathing experiments that were tried and dropped
+## 14. Pathing experiments
 
-Before locking in "greedy + 2-opt JP=45" as the production path, several
-algorithm changes and combinations were tried. Summary:
+The current production path is "greedy + alternating 2-opt/or-opt with
+spawn-anchored start, JP=45". Several other ideas were tried; some
+landed, several were dropped. Read this before re-implementing one of
+the dropped ones.
+
+### What landed
+
+| Change | Score delta | Notes |
+|---|---:|---|
+| Spawn anchor (lowest-level quest's pickup) for natural-tier sub-guides only | +0.2 | v1.2.0; cleanup buckets stay unanchored — anchoring them regressed dense-cluster sub-guides like Argent Dawn |
+| Or-opt refinement (segments of length 1..4) alternated with 2-opt | +0.5 | v1.3.0; the two heuristics unlock each other's moves |
+| Convergence-based early exit on the alternation loop | 0 effect on quality, ~30% runtime saved | v1.3.0; bails as soon as a full round leaves cost unchanged |
+
+### What was dropped
 
 | Change | Solo effect | Verdict |
 |---|---:|---|
@@ -393,10 +417,15 @@ algorithm changes and combinations were tried. Summary:
 | cluster-lookahead (tie-break by unlocked successors) | 0.0 | Too few ties for it to matter |
 | adaptive cluster-type radius (NPC vs mob) | 0.0 | NPC-vs-mob differentiation does not move the score |
 | complex-reclassify (promote short complex chains back to normal) | -0.5 | Promoted quests in battleground zones get lost; +50 % jumps |
+| spawn-anchor for **all** sub-guides incl. cleanup | -0.0 globally, but Argent Dawn fell from 91 to 84 | Cleanup is not a "first arrival" — kept anchor for natural only |
+| followup-aware absorption (extra detour budget if quest's next stop is near target) | -0.0 to -1.0 depending on knobs | Absorption corridor too narrow for the signal to help; aggressive bonuses fragmented clusters |
+| `JUMP_PENALTY` tuning | -0.0 to +0.1 | Distance gain at low JP comes at the cost of more X-Jumps; not a clear win |
+| or-opt segment length k=5 | -0.0 (regresses vs k=4) | Longer segments are too rigid for precedence-bound chains |
 
-Before re-implementing any of those, read this table. If you have a new
-heuristic, by all means test it — but do the comparison properly with
-the diff snippet above.
+If you have a new heuristic, by all means test it — but do the
+comparison properly with the diff snippet above, and check Argent Dawn
+specifically: extremely dense clusters expose anchor and absorption
+trade-offs the global aggregate hides.
 
 ---
 

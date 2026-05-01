@@ -38,9 +38,10 @@ Each `.toc` carries the matching `## Interface` version
 ## Features
 
 - **Tour routing**: greedy nearest-feasible cluster discovery with
-  on-the-way absorption and a 2-opt refinement pass — typical sub-guide
-  paths are within a few percent of optimal while respecting quest
-  precedence (`pre`, `preg`, `next`).
+  on-the-way absorption, then alternating **2-opt** (segment reversal)
+  and **or-opt** (segment relocation) refinement passes until both
+  converge. Typical sub-guide paths are within a few percent of optimal
+  while respecting quest precedence (`pre`, `preg`, `next`).
 - **Per-zone sub-guides**: quests are bucketed by their pickup zone, then
   by tier (natural / cleanup) so each zone is a coherent walkthrough.
 - **Cross-zone handling**: chains that leave a zone are extracted into a
@@ -71,7 +72,6 @@ addons/
     │   └── ...
     └── ...                    (30 addons for TBC — all known factions)
 _quality_report.md             (report from the last --all run)
-curseforge_description.md      (project description for the CurseForge page)
 ```
 
 The folder prefix `Guidelime_<AUTHOR>_` matches GuideLime's sub-addon
@@ -175,9 +175,10 @@ brackets — those would parse as another tag):
    prerequisite ends up in the other bucket, otherwise GuideLime would
    hide the dependent step.
 7. **Routing** — per sub-guide, build a tour: cluster discovery,
-   on-the-way absorption, then a 2-opt post-pass refines the order.
-8. **Emit** — write `<addon>.toc`, `<addon>.lua`, and the per-addon
-   `CHANGELOG.md`.
+   on-the-way absorption, then alternate 2-opt and or-opt refinement
+   passes until convergence.
+8. **Emit** — write `<addon>.toc`, `<addon>.lua`, the per-addon
+   `CHANGELOG.md`, and `README.md`.
 
 ## Routing in detail
 
@@ -198,15 +199,27 @@ normalised 0-100 per zone, but the actual zone size differs hugely
 in `constants.ZONE_CLUSTER_RADIUS` (up to 25). City- and medium-density
 zones use the default — empirically a smaller radius makes them worse.
 
-After the greedy tour, a **2-opt post-pass** reverses every (i, j)
-segment that lowers the total cost without breaking precedence. The
-cost function penalises cross-zone jumps with `JUMP_PENALTY = 45.0` so
-the refinement does not "shorten" intra-zone distance by adding extra
-flightpath hops.
+After the greedy tour, two refinement heuristics alternate until both
+converge (or `MAX_REFINE_ROUNDS = 8` is hit; most sub-guides finish in
+2–4 rounds):
 
-Precedence is enforced by `routing.is_feasible`: a stop is only
-considered if all its prerequisites are already in the `completed` set.
-Quests without `pickup_coords` (item-drop bridges) treat the QA as
+- **2-opt** (`routing/two_opt.py`) reverses every (i, j) segment that
+  lowers the total cost without breaking precedence.
+- **Or-opt** (`routing/or_opt.py`) picks up a contiguous segment of 1–4
+  TourEntries and re-inserts it elsewhere, again without breaking
+  precedence. Each candidate is evaluated by an O(1) incremental cost
+  delta — six boundary edges change at most, so the full
+  `_tour_cost` recompute is avoided.
+
+Each pass unlocks moves the other cannot reach in a single iteration;
+alternating squeezes more distance out than running either pass harder.
+The cost function shared by both penalises cross-zone jumps with
+`JUMP_PENALTY = 45.0` so the refinement does not "shorten" intra-zone
+distance by adding extra flightpath hops.
+
+Precedence is enforced by `routing.feasibility.is_feasible`: a stop is
+only considered if all its prerequisites are already in the `completed`
+set. Quests without `pickup_coords` (item-drop bridges) treat the QA as
 implicitly satisfied — their QC and QT do not wait for a non-existent
 pickup stop.
 
@@ -234,7 +247,10 @@ Routing constants are scattered across `guides_generator/routing/`:
 |---|---|---:|---|
 | `CLUSTER_RADIUS` | `routing/tour.py` | 12.0 | per-zone overridable via `ZONE_CLUSTER_RADIUS` |
 | `DETOUR_THRESHOLD` | `routing/tour.py` | 6.0 | maximum extra distance for on-the-way absorption |
-| `JUMP_PENALTY` | `routing/two_opt.py` | 45.0 | 2-opt cost of one cross-zone jump (in map units) |
+| `MAX_REFINE_ROUNDS` | `routing/tour.py` | 8 | upper bound on alternating 2-opt/or-opt rounds (early-exits on convergence) |
+| `JUMP_PENALTY` | `routing/two_opt.py` | 45.0 | cost of one cross-zone jump (in map units), used by both 2-opt and or-opt |
+| `MAX_PASSES` | `routing/two_opt.py` | 3 | max improving 2-opt swaps per outer round |
+| `MAX_PASSES` | `routing/or_opt.py` | 3 | max improving or-opt relocations per outer round |
 | `DIFFERENT_ZONE_PENALTY` | `routing/distance.py` | 1e6 | synthetic distance for cross-zone neighbours |
 
 ## Versioning and changelog
@@ -290,8 +306,10 @@ guides_generator/
         feasibility.py                 # predecessor map, is_feasible
         distance.py                    # zone-aware distance helper
         cluster.py                     # cluster discovery + on-the-way absorption
+        start.py                       # spawn-anchor heuristic for natural tier
         two_opt.py                     # 2-opt refinement pass
-        tour.py                        # route_subguide orchestrator
+        or_opt.py                      # or-opt refinement pass (incremental cost)
+        tour.py                        # route_subguide orchestrator (alternates 2-opt + or-opt)
         stats.py                       # compute_tour_stats
     output/                            # GuideLime-Lua emission
         sanitize.py                    # UTF-8 -> safe ASCII subset
@@ -327,7 +345,7 @@ Public entry points per package:
 | `coords` | `attach_coords`, `compute_objective_centroid`, `get_npc_coords` |
 | `zones` | `assign_primary_zone`, `is_self_contained`, `group_by_zone_and_tier`, `get_zone_tier` |
 | `chains` | `find_chains`, `topo_sort` |
-| `routing` | `route_subguide`, `compute_tour_stats`, `Stop`, `TourEntry` |
+| `routing` | `route_subguide`, `pick_start_position`, `compute_tour_stats`, `Stop`, `TourEntry` |
 | `output` | `generate_guide`, `compute_efficiency_score`, `GuideEmitter` |
 | `addon` | `write_addon`, `read_changelog`, `addon_name_for_faction`, `guide_title_for_faction` |
 | `pipeline` | `run_single`, `run_all` |
@@ -391,8 +409,9 @@ output path or routing.
 
 ## Limitations
 
-- The router is greedy + 2-opt, not an exact TSP solver. It is robust
-  and fast (a full bulk run is sub-second after the DBs are cached).
+- The router is greedy + alternating 2-opt/or-opt, not an exact TSP
+  solver. It is robust and fast — a full bulk run takes ~15s once the
+  Questie DBs are cached.
 - Quest chains spanning multiple sub-guides are tracked as singletons
   inside each sub-guide. The chain index lists each part separately.
 - Battleground and a few other zones are not in `ZONE_MAP`; quests

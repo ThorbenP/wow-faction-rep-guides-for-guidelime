@@ -14,7 +14,7 @@ from typing import Optional
 from ..constants import (
     AUTHOR, DEFAULT_CLUSTER_RADIUS, ZONE_CLUSTER_RADIUS, ZONE_MAP,
 )
-from ..routing import compute_tour_stats, route_subguide
+from ..routing import compute_tour_stats, pick_start_position, route_subguide
 from ..zones import get_zone_tier
 from .chain_index import build_chain_index, disambiguate_duplicate_names
 from .emitter import GuideEmitter
@@ -59,10 +59,17 @@ def emit_sub_guide(
     category = guide_category(faction_name)
 
     # Run the routing first — the efficiency score is part of the title.
+    # Spawn anchor only for natural-tier sub-guides: a player arriving in a
+    # starter zone naturally begins at the lowest-level quest. Cleanup
+    # buckets are off-tier returns where the player drops in from anywhere,
+    # so anchoring would just push the route through an arbitrary corner.
     cluster_radius = ZONE_CLUSTER_RADIUS.get(zone_id, DEFAULT_CLUSTER_RADIUS)
+    start_pos = pick_start_position(zone_quests) if bucket == 'natural' else None
     chain_list, quest_pos = build_chain_index(zone_quests)
     display_names = disambiguate_duplicate_names(zone_quests)
-    tour, orphans = route_subguide(zone_quests, cluster_radius=cluster_radius)
+    tour, orphans = route_subguide(
+        zone_quests, start_pos=start_pos, cluster_radius=cluster_radius,
+    )
     normal_pathing = compute_tour_stats(tour)
     score = compute_efficiency_score(
         normal_rep=zone_rep,

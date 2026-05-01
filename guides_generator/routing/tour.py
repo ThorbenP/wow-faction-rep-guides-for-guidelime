@@ -30,7 +30,14 @@ def route_subguide(
     cluster_radius: float = CLUSTER_RADIUS,
     detour_threshold: float = DETOUR_THRESHOLD,
 ) -> tuple[list[TourEntry], list[Stop]]:
-    """Build a tour from the given quests, then refine it with 2-opt."""
+    """Build a tour from the given quests, then refine it with 2-opt.
+
+    `start_pos`: optional anchor for cluster discovery and the 2-opt cost
+    function. Pass `pick_start_position(quests)` for natural-tier zones to
+    bias the tour toward the lowest-level quest (the racial spawn point in
+    starter zones); leave `None` for cleanup or complex sections, where
+    "where the player arrives" is not a meaningful concept.
+    """
     stops = build_stop_list(quests)
     predecessors = build_predecessor_map(quests)
     completed: dict[int, set[str]] = {}

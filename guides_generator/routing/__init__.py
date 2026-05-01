@@ -12,11 +12,12 @@ Public API:
     compute_tour_stats   pathing metrics for the quality report
     Stop, TourEntry      data carriers (also used by the output emitter)
 """
+from .start import pick_start_position
 from .stats import compute_tour_stats
 from .tour import CLUSTER_RADIUS, DETOUR_THRESHOLD, route_subguide
 from .types import Stop, TourEntry
 
 __all__ = [
     'CLUSTER_RADIUS', 'DETOUR_THRESHOLD', 'Stop', 'TourEntry',
-    'compute_tour_stats', 'route_subguide',
+    'compute_tour_stats', 'pick_start_position', 'route_subguide',
 ]

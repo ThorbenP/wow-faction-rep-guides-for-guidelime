@@ -212,30 +212,30 @@ pickup stop.
 
 ## Configuration
 
-Tuning constants live in `guides_generator/constants.py`:
+Tuning constants live under `guides_generator/constants/` (split by domain;
+all symbols are re-exported from the package root):
 
-| Constant | Purpose |
-|---|---|
-| `AUTHOR` | Author tag in folder names, .toc Title, Author field |
-| `REPO_URL` | GitHub repo, embedded in every per-addon README |
-| `DEFAULT_CLUSTER_RADIUS` | Default routing cluster radius (12.0) |
-| `ZONE_CLUSTER_RADIUS` | Per-zone overrides for sparse zones |
-| `ZONE_LEVEL_TIER` | Natural level range per zone (used for bucketing) |
-| `ZONE_MAP` | Numeric zone id -> human-readable name |
-| `CITY_ZONES` | Capital cities — no tier filter applied |
-| `DUNGEON_ENTRANCES` | Instance-zone-id -> (parent zone, x, y) for the
-                       fallback when an NPC has no world coords |
-| `DUNGEON_BOSS_NPCS` | Override map for NPCs with `zone=0` that live in
-                       a known dungeon (e.g. Mutanus -> Wailing Caverns) |
-| `FACTION_NAMES`, `FACTION_GROUPS` | Faction registry |
+| Constant | Lives in | Purpose |
+|---|---|---|
+| `AUTHOR` | `constants/paths.py` | Author tag in folder names, .toc Title, Author field |
+| `REPO_URL` | `constants/paths.py` | GitHub repo, embedded in every per-addon README |
+| `DEFAULT_CLUSTER_RADIUS` | `constants/zones.py` | Default routing cluster radius (12.0) |
+| `ZONE_CLUSTER_RADIUS` | `constants/zones.py` | Per-zone overrides for sparse zones |
+| `ZONE_LEVEL_TIER` | `constants/zones.py` | Natural level range per zone (used for bucketing) |
+| `ZONE_MAP` | `constants/zones.py` | Numeric zone id -> human-readable name |
+| `CITY_ZONES` | `constants/zones.py` | Capital cities — no tier filter applied |
+| `DUNGEON_ENTRANCES` | `constants/dungeons.py` | Instance-zone-id -> (parent zone, x, y) entrance fallback |
+| `DUNGEON_BOSS_NPCS` | `constants/dungeons.py` | Override map for NPCs with `zone=0` that live in a known dungeon |
+| `FACTION_NAMES`, `FACTION_GROUPS` | `constants/factions.py` | Faction registry |
 
-Routing constants are in `guides_generator/routing.py`:
+Routing constants are scattered across `guides_generator/routing/`:
 
-| Constant | Default | Purpose |
-|---|---:|---|
-| `CLUSTER_RADIUS` | 12.0 | per-zone overridable via `ZONE_CLUSTER_RADIUS` |
-| `DETOUR_THRESHOLD` | 6.0 | maximum extra distance for on-the-way absorption |
-| `JUMP_PENALTY` | 45.0 | 2-opt cost of one cross-zone jump (in map units) |
+| Constant | Lives in | Default | Purpose |
+|---|---|---:|---|
+| `CLUSTER_RADIUS` | `routing/tour.py` | 12.0 | per-zone overridable via `ZONE_CLUSTER_RADIUS` |
+| `DETOUR_THRESHOLD` | `routing/tour.py` | 6.0 | maximum extra distance for on-the-way absorption |
+| `JUMP_PENALTY` | `routing/two_opt.py` | 45.0 | 2-opt cost of one cross-zone jump (in map units) |
+| `DIFFERENT_ZONE_PENALTY` | `routing/distance.py` | 1e6 | synthetic distance for cross-zone neighbours |
 
 ## Versioning and changelog
 
@@ -259,41 +259,79 @@ interface version, install path) and carries the GitHub repo link from
 ## Project layout
 
 ```
-create.py                     # entry point
-caveats.md                    # recurring pitfalls and design rationale
-readme.md                     # this file
-changelog/                    # versioned release notes
+create.py                              # entry point (re-exports cli.main)
+caveats.md                             # recurring pitfalls and design rationale
+readme.md                              # this file
+changelog/                             # versioned release notes
 guides_generator/
-    __init__.py
-    constants.py              # static data: factions, races, zones, dungeon entrances
-    prompts.py                # interactive faction + expansion selection
-    fetch.py                  # Questie DB downloader and on-disk cache
-    parsers.py                # Questie quest/NPC/object/item table parsers
-    quests.py                 # faction filter, bridge expansion, cross-zone classification
-    coords.py                 # pickup/turnin/objective coordinate resolution
-    zones.py                  # zone assignment and bucketing
-    chains.py                 # connected-component detection and topological sort
-    routing.py                # tour builder (cluster discovery, absorption, 2-opt)
-    output.py                 # Lua emission, sub-guide structure, efficiency score
-    addon.py                  # write .toc + .lua + CHANGELOG.md, read changelog dir
-    cli.py                    # argument parsing, pipeline orchestration, quality report
-addons/<expansion>/           # generated addon directories (output, e.g. addons/tbc/)
-cache/<expansion>/            # cached Questie DB files (e.g. cache/tbc/)
-_quality_report.md            # written by --all (maintainer-only artefact)
+    cli.py                             # argument parsing + dispatch
+    chains.py                          # connected-component detection, topo sort
+    zones.py                           # zone assignment and bucketing
+    prompts.py                         # interactive faction + expansion selection
+    constants/                         # static reference data, split by domain
+        paths.py        factions.py    races_classes.py
+        zones.py        dungeons.py    databases.py
+    questie/                           # Questie DB I/O
+        fetch.py                       # downloader + on-disk cache
+        lua.py                         # slpp wrapper, table iteration helpers
+        spawns.py                      # NPC/object spawn-list extraction
+        quest_db.py     npc_db.py      object_db.py    item_db.py
+    quests/                            # quest-level processing
+        builder.py                     # filter + lift Questie array into quest dict
+        bridges.py                     # pull in pre/preg prerequisite chains
+        classify.py                    # split into kept vs complex (cross-zone)
+        decode.py                      # race / class bitmask decoders
+    coords/                            # coordinate resolution
+        geometry.py                    # Coord type, clustering, centroid
+        resolve.py                     # NPC/object/item lookup, attach_coords
+        objectives.py                  # objective spawn centroid
+    routing/                           # tour builder
+        types.py                       # Stop, TourEntry
+        feasibility.py                 # predecessor map, is_feasible
+        distance.py                    # zone-aware distance helper
+        cluster.py                     # cluster discovery + on-the-way absorption
+        two_opt.py                     # 2-opt refinement pass
+        tour.py                        # route_subguide orchestrator
+        stats.py                       # compute_tour_stats
+    output/                            # GuideLime-Lua emission
+        sanitize.py                    # UTF-8 -> safe ASCII subset
+        chain_index.py                 # chain detection, name disambiguation
+        tags.py                        # [A race/class] tag construction
+        emitter.py                     # GuideEmitter (stateful tag-line renderer)
+        header.py                      # file-top comment block
+        score.py                       # 0..100 efficiency score
+        sub_guide.py                   # one Guidelime.registerGuide(...) block
+        guide.py                       # generate_guide orchestrator
+    addon/                             # write addon directory
+        names.py                       # addon folder + .toc Title naming
+        expansions.py                  # per-expansion display labels
+        toc.py          changelog.py   readme.py        writer.py
+    pipeline/                          # CLI orchestration
+        loader.py                      # shared DB loaders + build-and-write
+        single.py                      # interactive / --faction
+        bulk.py                        # --all
+        console.py                     # progress + summary printing
+    report/                            # quality report
+        aggregate.py    sections.py    writer.py
+addons/<expansion>/                    # generated addon directories
+cache/<expansion>/                     # cached Questie DB files
+_quality_report.md                     # written by --all (maintainer-only)
 ```
 
-Public symbols per module:
+Public entry points per package:
 
-| Module | Main entry points |
+| Package | Main symbols |
 |---|---|
-| `parsers` | `parse_quest_db`, `parse_npc_db`, `parse_object_db`, `parse_item_db` |
+| `questie` | `fetch_or_load`, `parse_quest_db`, `parse_npc_db`, `parse_object_db`, `parse_item_db` |
 | `quests` | `filter_quests_by_faction`, `expand_with_prereq_bridges`, `drop_unreachable_bridge_chains`, `attribute_complex_to_zones`, `decode_races`, `decode_classes` |
 | `coords` | `attach_coords`, `compute_objective_centroid`, `get_npc_coords` |
 | `zones` | `assign_primary_zone`, `is_self_contained`, `group_by_zone_and_tier`, `get_zone_tier` |
 | `chains` | `find_chains`, `topo_sort` |
 | `routing` | `route_subguide`, `compute_tour_stats`, `Stop`, `TourEntry` |
 | `output` | `generate_guide`, `compute_efficiency_score`, `GuideEmitter` |
-| `addon` | `write_addon`, `read_changelog`, `addon_name_for_faction` |
+| `addon` | `write_addon`, `read_changelog`, `addon_name_for_faction`, `guide_title_for_faction` |
+| `pipeline` | `run_single`, `run_all` |
+| `report` | `write_quality_report` |
 | `prompts` | `prompt_faction`, `prompt_expansion` |
 | `cli` | `main` |
 

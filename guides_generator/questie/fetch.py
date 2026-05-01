@@ -6,7 +6,7 @@ import sys
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
-from .constants import DB_FILES, QUESTIE_RAW
+from ..constants import DB_FILES, QUESTIE_RAW
 
 USER_AGENT = 'guides_generator/1.0'
 DOWNLOAD_TIMEOUT = 60

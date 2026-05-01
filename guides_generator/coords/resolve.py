@@ -1,14 +1,19 @@
-"""Resolve pickup, turnin, and objective coordinates from the Questie DBs."""
+"""Look up pickup / turnin coords through the NPC, object, and item DBs.
+
+Quests carry references like `start_npcs`, `start_objects`, `start_items` —
+this module follows the cascade NPC -> Object -> Item-drop until it hits a
+real spawn coord or gives up.
+
+`attach_coords` mutates each quest in-place; later stages of the pipeline
+read `q['pickup_coords']`, `q['turnin_coords']`, `q['objective_coords']`.
+"""
 from __future__ import annotations
 
-import math
 from typing import Optional
 
-from .constants import DUNGEON_BOSS_NPCS, DUNGEON_ENTRANCES, ZONE_MAP
-
-
-Coord = tuple[int, float, float]  # (zone_id, x, y)
-SPAWN_CLUSTER_THRESHOLD = 12.0  # map units, single-link clustering radius
+from ..constants import DUNGEON_BOSS_NPCS, DUNGEON_ENTRANCES, ZONE_MAP
+from .geometry import Coord
+from .objectives import compute_objective_centroid
 
 
 # Safety invariant: the dungeon-instance zone IDs must not overlap with the
@@ -139,91 +144,3 @@ def _resolve_turnin(q: dict, npc_db: dict, object_db: dict) -> Optional[Coord]:
         if c:
             return c
     return None
-
-
-def compute_objective_centroid(
-    q: dict, npc_db: dict, object_db: dict, item_db: dict,
-) -> Optional[Coord]:
-    """Centroid of the largest spawn cluster of all quest objectives.
-
-    A mob can spawn in several patches across the same zone; the simple mean
-    of all spawns lands in no-man's-land. We cluster them first (single-link
-    by SPAWN_CLUSTER_THRESHOLD) and centre on the densest cluster instead.
-    Spawns outside the pickup zone are dropped if any in-zone spawns exist.
-    """
-    spawns = _collect_objective_spawns(q, npc_db, object_db, item_db)
-    if not spawns:
-        return None
-
-    pickup_coords = q.get('pickup_coords')
-    pickup_zone = pickup_coords[0] if pickup_coords else None
-    if pickup_zone:
-        in_zone = [s for s in spawns if s[0] == pickup_zone]
-        if in_zone:
-            spawns = in_zone
-
-    clusters = cluster_spawns(spawns, threshold=SPAWN_CLUSTER_THRESHOLD)
-    largest = max(clusters, key=len)
-    return _centroid(largest)
-
-
-def _collect_objective_spawns(
-    q: dict, npc_db: dict, object_db: dict, item_db: dict,
-) -> list[Coord]:
-    """Aggregate spawn coords from all quest objectives: creatures, objects,
-    and the spawn locations of items mentioned by the objective."""
-    spawns: list[Coord] = []
-    for cid in q.get('obj_creatures', []):
-        _collect_npc_spawns(spawns, npc_db, cid)
-    for oid in q.get('obj_objects', []):
-        obj = object_db.get(oid) if object_db else None
-        if obj:
-            spawns.extend(obj.get('coords', []))
-    for iid in q.get('obj_items', []):
-        itm = item_db.get(iid) if item_db else None
-        if not itm:
-            continue
-        for npc_id in itm.get('npcDrops', []):
-            _collect_npc_spawns(spawns, npc_db, npc_id)
-        for obj_id in itm.get('objectDrops', []):
-            obj = object_db.get(obj_id) if object_db else None
-            if obj:
-                spawns.extend(obj.get('coords', []))
-    return spawns
-
-
-def _collect_npc_spawns(spawns: list[Coord], npc_db: dict, npc_id: int) -> None:
-    npc = npc_db.get(npc_id) or {}
-    for c in npc.get('coords', []):
-        if isinstance(c, dict):
-            spawns.append((c.get(3, 0), c.get(1, 0), c.get(2, 0)))
-
-
-def cluster_spawns(spawns: list[Coord], threshold: float) -> list[list[Coord]]:
-    """Greedy single-link clustering by map distance. Points in the same zone
-    are clustered if their distance is below the threshold; points in
-    different zones are never merged."""
-    clusters: list[list[Coord]] = []
-    for p in spawns:
-        attached = False
-        for c in clusters:
-            if any(_close(p, q, threshold) for q in c):
-                c.append(p)
-                attached = True
-                break
-        if not attached:
-            clusters.append([p])
-    return clusters
-
-
-def _close(a: Coord, b: Coord, threshold: float) -> bool:
-    if a[0] != b[0]:
-        return False
-    return math.hypot(a[1] - b[1], a[2] - b[2]) < threshold
-
-
-def _centroid(spawns: list[Coord]) -> Coord:
-    cz = spawns[0][0]
-    cx = sum(s[1] for s in spawns) / len(spawns)
-    cy = sum(s[2] for s in spawns) / len(spawns)
-    return (cz, cx, cy)

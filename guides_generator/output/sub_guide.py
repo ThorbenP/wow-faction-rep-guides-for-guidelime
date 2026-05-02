@@ -16,7 +16,6 @@ from ..constants import (
 )
 from ..routing import compute_tour_stats, pick_start_position, route_subguide
 from ..zones import get_zone_tier
-from .chain_index import build_chain_index, disambiguate_duplicate_names
 from .emitter import GuideEmitter
 from .sanitize import safe_text
 
@@ -63,8 +62,6 @@ def emit_sub_guide(
     # so anchoring would just push the route through an arbitrary corner.
     cluster_radius = ZONE_CLUSTER_RADIUS.get(zone_id, DEFAULT_CLUSTER_RADIUS)
     start_pos = pick_start_position(zone_quests) if bucket == 'natural' else None
-    chain_list, quest_pos = build_chain_index(zone_quests)
-    display_names = disambiguate_duplicate_names(zone_quests)
     tour, orphans = route_subguide(
         zone_quests, start_pos=start_pos, cluster_radius=cluster_radius,
     )
@@ -96,16 +93,7 @@ def emit_sub_guide(
         out.append(f'[GA {side}]')
     out.append('')
 
-    if chain_list:
-        out.append('[OC]Quest chains in this zone:')
-        for label, names in chain_list:
-            chain_summary = ' -> '.join(safe_text(n) for n in names[:4])
-            if len(names) > 4:
-                chain_summary += ' -> ...'
-            out.append(f'[OC]  {label}: {chain_summary}')
-        out.append('')
-
-    emitter.emit_tour(tour, orphans, display_names, quest_pos)
+    emitter.emit_tour(tour, orphans)
 
     complex_stats = None
     if complex_quests:
@@ -161,20 +149,9 @@ def emit_complex_sub_guide(
         out.append(f'[GA {side}]')
     out.append('')
 
-    chain_list, quest_pos = build_chain_index(quests)
-    if chain_list:
-        out.append('[OC]Quest chains:')
-        for label, names in chain_list:
-            chain_summary = ' -> '.join(safe_text(n) for n in names[:4])
-            if len(names) > 4:
-                chain_summary += ' -> ...'
-            out.append(f'[OC]  {label}: {chain_summary}')
-        out.append('')
-
-    display_names = disambiguate_duplicate_names(quests)
     tour, orphans = route_subguide(quests)
     pathing = compute_tour_stats(tour)
-    emitter.emit_tour(tour, orphans, display_names, quest_pos)
+    emitter.emit_tour(tour, orphans)
 
     out.append(f']], "{category}")')
     out.append('')
@@ -199,29 +176,18 @@ def _emit_complex_section(
     out: list[str], emitter: GuideEmitter, quests: list[dict],
 ) -> dict:
     """Emit the complex section inside an existing zone sub-guide: banner
-    + own chain index + tour. The emitter's location state is reset
-    because the complex tour usually starts somewhere different from
-    where the normal tour ended.
+    + tour. The emitter's location state is reset because the complex
+    tour usually starts somewhere different from where the normal tour
+    ended.
     """
     out.append('')
     out.append('[OC]Complex quests: chains that start here and lead to other zones.')
     out.append('')
 
-    chain_list, quest_pos = build_chain_index(quests)
-    if chain_list:
-        out.append('[OC]Complex chains:')
-        for label, names in chain_list:
-            chain_summary = ' -> '.join(safe_text(n) for n in names[:4])
-            if len(names) > 4:
-                chain_summary += ' -> ...'
-            out.append(f'[OC]  {label}: {chain_summary}')
-        out.append('')
-
-    display_names = disambiguate_duplicate_names(quests)
     emitter.reset_location()
     tour, orphans = route_subguide(quests)
     pathing = compute_tour_stats(tour)
-    emitter.emit_tour(tour, orphans, display_names, quest_pos)
+    emitter.emit_tour(tour, orphans)
     return {'orphans': len(orphans), 'pathing': pathing}
 
 

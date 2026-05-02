@@ -2,7 +2,6 @@
 
 Architecture:
     sanitize          UTF-8 -> GuideLime-safe ASCII subset
-    chain_index       chain detection + display-name disambiguation
     tags              [A race/class] tag construction
     emitter           GuideEmitter — stateful tag-line renderer
     header            file-top comment block (top zones table)

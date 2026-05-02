@@ -1,65 +1,89 @@
 # Routing Experiments — v1.4.0 rep/dist baseline
 
-Snapshot of the seven feature-experiment branches re-benchmarked
-under the v1.4.0 metric (rep / map unit). The composite-score numbers
-recorded earlier on each branch are no longer directly comparable;
-this file is the authoritative table for "what does this branch buy
-us, on the metric we now care about?".
+Authoritative table of every routing experiment branch measured under
+the v1.4.0 metric (rep / map unit). Composite-score numbers from
+v1.3.x commit messages are no longer comparable.
 
 ## Baseline (v1.4.0 main, greedy)
 
 - **Global Rep/Dist**: 16.04 rep / map unit
-- **Total Distance (Normal)**: 40022 map units
-- **Total X-Jumps (Normal)**: 419
-- **Absorption Rate (Normal)**: 67.5%
-- **Bulk-run runtime**: ~17 s
+- **Total Distance**: 40022 map units
+- **Total X-Jumps**: 419
+- **Bulk runtime**: ~17 s
 
-## Per-branch results
+## Pre-v1.4.0 branches (rebased onto v1.4.0 main)
 
-| Branch | Rep/Dist | Δ rep/dist | Distance | Δ% dist | Jumps | Absorp | Runtime | Verdict |
-|---|---:|---:|---:|---:|---:|---:|---:|---|
-| `feat/cluster-defrag` | 16.04 | 0.00 | 40022 | 0% | 419 | 79.8% | ~17s | **cosmetic** — no distance change, only re-labels travels as cluster members |
-| `feat/held-karp-small` | 16.11 | +0.07 | 39836 | -0.5% | 420 | 67.5% | ~17s | small win on tiny sub-guides; provably-optimal where it applies (≤12 entries) |
-| `feat/three-opt` | 16.08 | +0.04 | 39906 | -0.3% | 414 | 67.5% | 2m38s | marginal, expensive (≈9× runtime) |
-| `feat/stop-level-2opt` | 16.05 | +0.01 | 39978 | -0.1% | 419 | 70.5% | 20s | almost null; branch's score-aligned acceptance fights the new metric |
-| `feat/simulated-annealing` | 16.10 | +0.06 | 39862 | -0.4% | 419 | 67.5% | 33s | small but real distance gain — invisible under v1.3.x score because the composite did not reflect 0.4% distance |
-| `feat/random-insertion` | 15.79 | -0.25 | 40652 | +1.6% | 413 | 57.8% | 35s | regresses; cheapest-insertion fragments same-coord stops |
-| `feat/multistart-routing` (greedy mode) | 16.04 | 0.00 | 40022 | 0% | 419 | 76.5% | 20s | greedy mode of branch ≡ greedy + defrag; cosmetic only |
-| `feat/multistart-routing` (multistart) | **16.55** | **+0.51** | **38788** | **-3.1%** | 428 | 81.9% | 7m9s | **largest single-branch win**; K=64 randomized rebuilds beat the greedy local optimum |
+| Branch | Rep/Dist | Δ | Distance | Δ% | Notes |
+|---|---:|---:|---:|---:|---|
+| `feat/cluster-defrag` | 16.04 | 0.00 | 40022 | 0% | cosmetic — no distance change |
+| `feat/held-karp-small` | 16.11 | +0.07 | 39836 | -0.5% | DP optimum for ≤12-entry sub-guides |
+| `feat/three-opt` | 16.08 | +0.04 | 39906 | -0.3% | runtime ≈9× |
+| `feat/stop-level-2opt` | 16.05 | +0.01 | 39978 | -0.1% | branch's old score-aligned acceptance fights the new metric |
+| `feat/simulated-annealing` | 16.10 | +0.06 | 39862 | -0.4% | small distance gain — visible only under rep/dist |
+| `feat/random-insertion` | 15.79 | -0.25 | 40652 | +1.6% | regresses; cheapest-insertion fragments same-coord stops |
+| `feat/multistart-routing` (multistart) | 16.55 | +0.51 | 38788 | -3.1% | K=64 randomized rebuilds. Score-aligned acceptance. |
 
-## Insights from the new metric
+## Post-v1.4.0 experiments
 
-1. **Total rep is fixed by the input.** `rep / dist` therefore
-   collapses to `constant / dist` per sub-guide — minimising
-   distance is the *only* lever the routing has on the headline KPI.
-   Score-aligned acceptance schemes added on the v1.3.x branches
-   (multistart, stop-level-2opt) optimise something else and may
-   *underperform* a simple `_tour_cost` (`distance + JUMP_PENALTY ×
-   jumps`) acceptance against rep/dist.
-2. **Defrag had no impact.** v1.3.x's composite gave it +1.6 score
-   because absorption carried 15% weight. Under rep/dist there is no
-   such weight. Keeping defrag is a *presentation* choice, not a
-   routing improvement.
-3. **3-opt and Held-Karp matter more than expected.** Small but real
-   distance reductions (-0.3% / -0.5%) directly translate to rep/dist
-   gains. They are honest contributions.
-4. **Multistart is the dominant lever.** -3.1% distance, +3.2% on the
-   headline. The runtime cost is steep but for an archive-quality
-   regeneration it is acceptable.
-5. **Ranking under rep/dist (best -> worst on the headline metric):**
-   multistart >> SA ≈ HK > 3-opt > stop-level ≈ defrag (no effect) >
-   random-insertion (regresses).
+| Branch | Mode | Rep/Dist | Δ vs main | Distance | Δ% | Runtime | Notes |
+|---|---|---:|---:|---:|---:|---:|---|
+| `feat/multistart-cost-aligned` | multistart | 16.65 | +0.61 | 38550 | -3.7% | 6m36s | cost-aligned beats score-aligned by +0.10. -8 jumps. |
+| `feat/double-bridge-ils` | multistart | 16.67 | +0.63 | 38502 | -3.8% | 6m41s | adds Lin-Kernighan-style 4-edge perturbation. +0.02 marginal. |
+| `feat/combined-best-v2` | greedy | 16.08 | +0.04 | 39911 | -0.3% | 28s | HK + 3-opt(≤50) + defrag in greedy refinement. |
+| `feat/combined-best-v2` | multistart | 16.66 | +0.62 | 38532 | -3.7% | 6m55s | combined chain. +0.01 vs cost-aligned alone. |
+| `feat/larger-or-opt` | greedy | 16.03 | -0.01 | 40044 | +0.05% | 16s | k=1..6. Tiny regression — search diverts. |
+| `feat/combined-stop-level-finish` | greedy | 16.19 | +0.15 | 39632 | -1.0% | 34s | adds stop-level 2-opt finish. |
+| `feat/combined-stop-level-finish` | multistart | 16.74 | +0.70 | 38341 | -4.2% | 7m50s | stop-level 2-opt finds moves 3-opt+HK miss. |
+| `feat/stop-level-or-opt-finish` | greedy | 16.26 | +0.22 | 39470 | -1.4% | 38s | adds stop-level or-opt to combined-stop-level. **best greedy** |
+| **`feat/stop-level-or-opt-finish`** | **multistart** | **16.78** | **+0.74** | **38251** | **-4.4%** | 8m7s | **OVERALL BEST**. Stop-level or-opt + 2-opt finish on multistart winner. |
 
-## Implications for next round of experiments
+## Key findings under rep/dist
 
-- Re-run multistart with raw `_tour_cost` acceptance instead of
-  score-aligned: the new metric may favour pure distance-min, and
-  the score-aligned variant could be leaving distance on the table.
-- Add a *double-bridge* move to ILS: classic escape from 2-opt local
-  optima that pure segment-reversal cannot leave.
-- Re-assemble a "combined-best" branch under v1.4.0:
-  HK + 3-opt-cap + multistart-cost-aligned, see how the wins
-  compose.
+1. **Total rep is fixed by the input**, so `rep/dist = const/dist`.
+   Maximising rep/dist ≡ minimising `_tour_cost` (distance +
+   JUMP_PENALTY × jumps). Score-aligned acceptance schemes carried
+   over from v1.3.x optimise the wrong objective and underperform.
 
-These follow up as `feat/multistart-cost-aligned`,
-`feat/double-bridge-ils`, `feat/combined-best-v2`.
+2. **Defrag is cosmetic.** The +12 percentage-point absorption it
+   produced under v1.3.x score is now correctly worth zero — the
+   tour visits the same stops at the same coords, only the cluster
+   labelling differs.
+
+3. **Multistart is the dominant lever.** K=64 randomized rebuilds
+   with cost-aligned acceptance gives +3.7% distance reduction
+   (16.04 → 16.65). Every other technique builds on this.
+
+4. **Stop-level moves outperform entry-level past multistart.**
+   3-opt + Held-Karp at the entry level cannot break clusters; once
+   multistart finds a good entry-level basin, stop-level 2-opt and
+   or-opt reach a strictly smaller-distance optimum (16.66 → 16.78).
+
+5. **Diminishing returns kick in fast.** The ceiling under
+   reasonable runtime sits around 16.78 (+4.6% over baseline). Each
+   technique past multistart adds 0.02-0.10 rep/dist; each costs ~1
+   minute of bulk runtime.
+
+## What did *not* work
+
+- Larger or-opt segments (k=5,6): tiny regression — more candidates
+  divert the alternating search.
+- Random-insertion construction: regresses by -1.6% distance.
+- Pure simulated annealing on top of converged 2-opt: no change.
+- Adding 3-opt + HK to the multistart winner *after* cost-aligned
+  selection: ≤+0.01 rep/dist — multistart already drives candidates
+  close enough to the local optimum.
+
+## Recommended adoption
+
+If you want a single drop-in: **`feat/stop-level-or-opt-finish`**.
+- Greedy mode (`--method greedy`, default): +1.4% over baseline,
+  ~38s bulk runtime.
+- Multistart mode (`--method multistart`): +4.4% over baseline,
+  ~8m bulk runtime — appropriate for archive-quality regenerations.
+
+If you want only the free wins without runtime cost:
+**`feat/held-karp-small`** alone (+0.4%, no bulk-runtime overhead).
+
+The `_tour_cost`-aligned objective on multistart and ILS finishers
+is the prerequisite for everything past that. Score-aligned variants
+are obsolete under rep/dist.

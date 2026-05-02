@@ -56,9 +56,11 @@ Each `.toc` carries the matching `## Interface` version
 - **Race / class filtering**: restrictions are emitted as `[A ...]`
   tags — GuideLime hides non-matching steps at runtime, so the same addon
   serves every race/class on a side.
-- **Sage-style tags**: only the quest/NPC ID is in the tag body; the name
-  is rendered as an italic `*Name*:` prefix. GuideLime resolves names
-  itself at runtime.
+- **Verb-led step bodies**: each step reads as a player instruction
+  ("Pick up [QA<id>]", "Kill [TAR<a>], [TAR<b>] for [QC<id>]", "Loot
+  for [QC<id>]", "Turn in [QT<id>] (+rep rep)", combined "Turn in ...,
+  pick up ..."). Tags carry only the ID; GuideLime resolves quest and
+  NPC names at runtime.
 - **Quality reports**: every run writes a per-addon `QUALITY_REPORT.md`
   (snapshot, sub-guide breakdown, dropped quests) into the addon's own
   directory — so a single-faction `--faction` run produces the same
@@ -99,23 +101,17 @@ block per zone bucket. A typical sub-guide looks like this:
    \\ + 10 complex quests (chain leading to other zones, +475 rep).]
 [GA Alliance]
 
-[OC]Quest chains in this zone:
-[OC]  Chain 1: The Tower of Althalaxx -> Supplies to Auberdine
-[OC]  Chain 2: Raene's Cleansing -> An Aggressive Defense
-[OC]  ...
-
 [OC]At (26.2, 38.7) in Ashenvale: 2x pickup
-[G 26.2,38.7 Ashenvale]*The Tower of Althalaxx (Pt. 1)*: [QA970] *Chain 1 1/5*
-*Bathran's Hair*: [QA1010] *Chain 5 1/5*
-[G 31.4,30.7 Ashenvale]*The Tower of Althalaxx (Pt. 1)*: [QC970] *Chain 1 1/5*
+[G 26.2,38.7 Ashenvale]Pick up [QA970]
+Pick up [QA1010]
+[G 31.4,30.7 Ashenvale]Kill [TAR2031], [TAR1984] for [QC970]
+[G 32.6,29.5 Ashenvale]Turn in [QT970] (+250 rep), pick up [QA971]
 ...
 
 [OC]Complex quests: chains that start here and lead to other zones.
 
-[OC]Complex chains:
-[OC]  Chain 1: Velinde Starsong -> Velinde's Effects -> The Barrens Port -> ...
-
-[G 86.0,44.1 Ashenvale]*Velinde Starsong*: [QA1037] *Chain 1 1/8*
+[G 86.0,44.1 Ashenvale]Pick up [QA1037]
+Kill [TAR4318] for [QC1037]
 ...
 ```
 
@@ -125,13 +121,12 @@ Key elements:
   reward up front when picking which sub-guide to do.
 - **Description** — `[D ...]` with quest count, total rep, and any
   complex-quest summary.
-- **Chain index** — opening `[OC]` block listing every quest chain in
-  the sub-guide, so the player sees the structure up front.
 - **Cluster header** — emitted only for clusters with two or more stops:
   `[OC]At (x, y) in <zone>: Nx pickup, Ny objective, Nz turnin`.
-- **Inline chain markers** — `*Chain 3 2/4*` on each chain step, with a
-  combined `*Chain 3 2->3/4*` form when a turnin and the next pickup
-  share a single emitted line.
+- **Verb-led step body** — `Pick up [QA<id>]`, `Kill [TAR<a>], [TAR<b>]
+  for [QC<id>]`, `Loot for [QC<id>]`, `Turn in [QT<id>] (+rep rep)`,
+  or combined `Turn in [QT<id1>] (+rep), pick up [QA<id2>]` when one
+  NPC takes a turnin and immediately offers the next pickup.
 - **Location sharing** — the `[G x,y zone]` hint is omitted while
   consecutive steps share a position (within 1.5 map units).
 
@@ -150,11 +145,13 @@ Key elements:
 | `[A <race/class,...>]` | Step is only shown for the listed race/class |
 | `[OC]<text>` | Optional comment line, no checkbox |
 
-The QA/QT/QC/TAR tags carry **only the ID** in the body; the human-
-readable name is the `*Name*:` italic prefix in front of the tag. This
-matches the Sage convention and avoids a known GuideLime parser bug
-where names inside the tag body trigger `loadStepUseItems` errors on
-short sub-guides.
+The QA/QT/QC/TAR tags carry **only the ID** in the body — never a
+name. GuideLime resolves quest and NPC names from its own DB at
+runtime, and putting names inside the tag body triggers a known
+`loadStepUseItems` parser bug on short sub-guides. The verb prose
+that wraps the tag (`Pick up [QA<id>]`, `Kill [TAR<a>] for [QC<id>]`,
+...) is the player-facing instruction; the name appears in-game
+because GuideLime expands the tag.
 
 Plain-text annotations after a QA tag (round parentheses, not square
 brackets — those would parse as another tag):
@@ -310,7 +307,6 @@ readme.md                              # this file
 changelog/                             # versioned release notes
 guides_generator/
     cli.py                             # argument parsing + dispatch
-    chains.py                          # connected-component detection, topo sort
     zones.py                           # zone assignment and bucketing
     prompts.py                         # interactive faction + expansion selection
     constants/                         # static reference data, split by domain
@@ -347,7 +343,6 @@ guides_generator/
         stats.py                       # compute_tour_stats
     output/                            # GuideLime-Lua emission
         sanitize.py                    # UTF-8 -> safe ASCII subset
-        chain_index.py                 # chain detection, name disambiguation
         tags.py                        # [A race/class] tag construction
         emitter.py                     # GuideEmitter (stateful tag-line renderer)
         header.py                      # file-top comment block
@@ -378,7 +373,6 @@ Public entry points per package:
 | `quests` | `filter_quests_by_faction`, `expand_with_prereq_bridges`, `drop_unreachable_bridge_chains`, `attribute_complex_to_zones`, `decode_races`, `decode_classes` |
 | `coords` | `attach_coords`, `compute_objective_centroid`, `get_npc_coords` |
 | `zones` | `assign_primary_zone`, `is_self_contained`, `group_by_zone_and_tier`, `get_zone_tier` |
-| `chains` | `find_chains`, `topo_sort` |
 | `routing` | `route_subguide`, `pick_start_position`, `compute_tour_stats`, `Stop`, `TourEntry` |
 | `output` | `generate_guide`, `GuideEmitter` |
 | `addon` | `write_addon`, `read_changelog`, `addon_name_for_faction`, `guide_title_for_faction` |

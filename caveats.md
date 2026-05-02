@@ -27,14 +27,17 @@ checkboxes. German umlauts (`ä ö ü Ä Ö Ü ß`) round-trip fine.
 ### Defence
 
 `output/sanitize.py` exposes `safe_text()` and `safe_tag_content()`,
-applied to every dynamically composed string in the output: tag bodies
-of `[QA]/[QT]/[QC]/[TAR]`, the `*Name*:` italic prefix on QC steps,
-cluster headers, the chain index, and `[N]/[D]` titles.
-`_PUNCT_REPLACEMENTS` maps the known offenders to ASCII; everything else
-outside ASCII (other than the umlaut whitelist `_ALLOWED_UTF8`) is
-dropped silently. When you add a new output site, channel the dynamic
-value through one of those helpers — never inline a raw `q['name']`
-straight into a Lua string.
+applied to every dynamically composed string in the output: cluster
+headers, `[N]/[D]` titles, and any string that ends up inside a tag
+body. `_PUNCT_REPLACEMENTS` maps the known offenders to ASCII;
+everything else outside ASCII (other than the umlaut whitelist
+`_ALLOWED_UTF8`) is dropped silently. When you add a new output
+site, channel the dynamic value through one of those helpers —
+never inline a raw `q['name']` straight into a Lua string. (Today
+no quest or NPC name is printed by the emitter at all — names come
+from GuideLime's runtime resolution of the IDs in the tag — but the
+sanitisation pattern still applies whenever a future change reaches
+back for source text.)
 
 ### Pre-commit check
 
@@ -244,7 +247,7 @@ be extended; otherwise the quests are invisible to the generator.
 
 ---
 
-## 11. Sage-style tags: no name in the tag body
+## 11. No name in the tag body
 
 GuideLime's tag parser stumbles on `[QA<id> <name>]` for small
 sub-guides — `attempt to index local 'step' (a nil value)` errors in
@@ -257,13 +260,20 @@ Thousand Needles cleanup).
 Tags carry only the ID:
 - `[QA<id>]`, `[QT<id>]`, `[QC<id>]`, `[TAR<id>]`
 
-The quest name is rendered as a `*Name*:` italic prefix in front of the
-tag:
-- Solo: `*Name*: [QA<id>]`
-- Combined QT+QA: `*Name1 -> Name2*: [QT<id1>] (+rep)[QA<id2>]`
+The emitter never prints the quest name itself — it writes a verb-
+led prose body around the tag and lets GuideLime resolve the ID to
+the name at runtime:
+- Pickup: `Pick up [QA<id>]`
+- Kill: `Kill [TAR<a>], [TAR<b>] for [QC<id>]`
+- Loot: `Loot for [QC<id>]`
+- Turnin: `Turn in [QT<id>] (+rep rep)`
+- Combined QT+QA: `Turn in [QT<id1>] (+rep), pick up [QA<id2>]`
 
-GuideLime resolves quest and NPC names from its own DB at runtime. The
-italic prefix keeps the source readable.
+(Earlier releases up to v1.5.x rendered the quest name as a
+`*Name*:` italic prefix in front of the tag for source readability.
+v1.6.0 dropped the prefix — the player saw the name twice (once
+italic, once from GuideLime's resolution) and the verb prose carries
+the source readability the prefix used to provide.)
 
 ### Pre-commit check
 

@@ -408,8 +408,12 @@ recommended radius is above 12.
 
 ## 14. Pathing experiments
 
-The current production path is "greedy + alternating 2-opt/or-opt with
-spawn-anchored start, JP=45". Several other ideas were tried; some
+The current production path (v1.5.0) is **always-on multistart with
+the deep refinement chain** — see `routing/tour.py` for the
+orchestrator and `_experiments_history.md` at the repo root for the
+full experiment table that picked it.
+
+Several other ideas were tried over the v1.2.x and v1.3.x cycles; some
 landed, several were dropped. Read this before re-implementing one of
 the dropped ones.
 
@@ -417,10 +421,11 @@ the dropped ones.
 > are historical — they were recorded under the v1.3.x composite
 > efficiency score (50% rep/dist + 25% rep + 15% absorption + 10%
 > jump-penalty). v1.4.0 dropped that composite and switched to plain
-> `rep / map unit` as the headline metric. The directionality (won /
-> lost) of every entry below still stands, but the absolute "+0.5" is
-> not directly comparable to today's rep/dist deltas. New experiments
-> should record their own rep/dist deltas alongside.
+> `rep / map unit`; v1.5.0 made the multistart chain the production
+> default. The directionality (won / lost) of every entry below
+> still stands, but the absolute "+0.5" is not directly comparable
+> to today's rep/dist deltas. The v1.4.0 / v1.5.0 experiments are
+> tabled in `_experiments_history.md` at the repo root.
 
 ### What landed
 

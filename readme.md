@@ -37,11 +37,15 @@ Each `.toc` carries the matching `## Interface` version
 
 ## Features
 
-- **Tour routing**: greedy nearest-feasible cluster discovery with
-  on-the-way absorption, then alternating **2-opt** (segment reversal)
-  and **or-opt** (segment relocation) refinement passes until both
-  converge. Typical sub-guide paths are within a few percent of optimal
-  while respecting quest precedence (`pre`, `preg`, `next`).
+- **Tour routing**: greedy nearest-feasible build, K=64 randomized
+  multistart rebuilds, then a deep refinement chain on the cheapest
+  candidate (alternating 2-opt + or-opt to convergence, 3-opt for
+  small tours, Held-Karp DP for tiny tours, stop-level 2-opt and
+  or-opt finishers that can break clusters when shorter routes
+  exist). All quests' precedence (`pre`, `preg`, `next`) is
+  respected. Single-faction runs cost a few seconds; `--all`
+  takes ~8 minutes. See `_experiments_history.md` for the experiment
+  trail that picked this chain.
 - **Per-zone sub-guides**: quests are bucketed by their pickup zone, then
   by tier (natural / cleanup) so each zone is a coherent walkthrough.
 - **Cross-zone handling**: chains that leave a zone are extracted into a
@@ -177,9 +181,12 @@ brackets — those would parse as another tag):
    bucket. Chain-coalescing then merges buckets within a zone if a
    prerequisite ends up in the other bucket, otherwise GuideLime would
    hide the dependent step.
-7. **Routing** — per sub-guide, build a tour: cluster discovery,
-   on-the-way absorption, then alternate 2-opt and or-opt refinement
-   passes until convergence.
+7. **Routing** — per sub-guide, run the multistart pipeline:
+   K=64 randomized rebuilds, cost-aligned acceptance, ILS escape,
+   then the deep refinement chain (2-opt + or-opt + 3-opt + defrag +
+   Held-Karp + stop-level 2-opt + stop-level or-opt) on the winner.
+   See `routing/tour.py` for the orchestrator and
+   `_experiments_history.md` for the trail that picked the chain.
 8. **Emit** — write `<addon>.toc`, `<addon>.lua`, the per-addon
    `CHANGELOG.md`, and `README.md`.
 
@@ -202,21 +209,34 @@ normalised 0-100 per zone, but the actual zone size differs hugely
 in `constants.ZONE_CLUSTER_RADIUS` (up to 25). City- and medium-density
 zones use the default — empirically a smaller radius makes them worse.
 
-After the greedy tour, two refinement heuristics alternate until both
-converge (or `MAX_REFINE_ROUNDS = 8` is hit; most sub-guides finish in
-2–4 rounds):
+The greedy build is just the seed. Every sub-guide goes through
+**multistart** (`routing/multistart.py`) — K=64 randomized rebuilds
+plus an ILS escape — and the cheapest result is then run through
+the deep refinement chain (`routing/tour.py:refine_tour`):
 
-- **2-opt** (`routing/two_opt.py`) reverses every (i, j) segment that
-  lowers the total cost without breaking precedence.
-- **Or-opt** (`routing/or_opt.py`) picks up a contiguous segment of 1–4
-  TourEntries and re-inserts it elsewhere, again without breaking
-  precedence. Each candidate is evaluated by an O(1) incremental cost
-  delta — six boundary edges change at most, so the full
-  `_tour_cost` recompute is avoided.
+- **2-opt** (`routing/two_opt.py`) reverses every (i, j) segment
+  that lowers the total cost without breaking precedence.
+- **Or-opt** (`routing/or_opt.py`) picks up a contiguous segment of
+  1–4 TourEntries and re-inserts it elsewhere. Each candidate uses
+  an O(1) incremental cost delta — six boundary edges change at
+  most, so the full `_tour_cost` recompute is avoided.
+- **3-opt** (`routing/three_opt.py`) for tours with ≤50 entries —
+  three-cut reconnection patterns that 2-opt and or-opt cannot
+  reach in a single move.
+- **Defragmentation** merges same-coord adjacencies into one cluster
+  entry. Cosmetic under rep/dist (visit order unchanged), but it
+  keeps the emitted Lua tighter.
+- **Held-Karp DP** (`routing/held_karp.py`) for tours with ≤12
+  entries — provably-optimal entry permutation under precedence.
+- **Stop-level 2-opt** (`routing/stop_2opt.py`) and **stop-level
+  or-opt** (`routing/stop_or_opt.py`) finishers run on the
+  flattened stop sequence, then re-cluster. They can pull a single
+  stop out of its discovery-time cluster when a different position
+  is geometrically cheaper — moves the entry-level passes cannot
+  reach because they treat clusters as atomic.
 
-Each pass unlocks moves the other cannot reach in a single iteration;
-alternating squeezes more distance out than running either pass harder.
-The cost function shared by both penalises cross-zone jumps with
+Each pass unlocks moves the others cannot reach. The cost function
+shared by all of them penalises cross-zone jumps with
 `JUMP_PENALTY = 45.0` so the refinement does not "shorten" intra-zone
 distance by adding extra flightpath hops.
 
@@ -251,7 +271,11 @@ Routing constants are scattered across `guides_generator/routing/`:
 | `CLUSTER_RADIUS` | `routing/tour.py` | 12.0 | per-zone overridable via `ZONE_CLUSTER_RADIUS` |
 | `DETOUR_THRESHOLD` | `routing/tour.py` | 6.0 | maximum extra distance for on-the-way absorption |
 | `MAX_REFINE_ROUNDS` | `routing/tour.py` | 8 | upper bound on alternating 2-opt/or-opt rounds (early-exits on convergence) |
-| `JUMP_PENALTY` | `routing/two_opt.py` | 45.0 | cost of one cross-zone jump (in map units), used by both 2-opt and or-opt |
+| `THREE_OPT_MAX_ENTRIES` | `routing/tour.py` | 50 | tour-length cap for the 3-opt sweep (O(N³)) |
+| `MULTISTART_ITERATIONS` | `routing/multistart.py` | 64 | K, the number of randomized rebuilds per sub-guide |
+| `ILS_ROUNDS` | `routing/multistart.py` | 6 | random shake + re-refine rounds on the multistart winner |
+| `MAX_ENTRIES` | `routing/held_karp.py` | 12 | Held-Karp's O(N²·2^N) cap above which the DP is skipped |
+| `JUMP_PENALTY` | `routing/two_opt.py` | 45.0 | cost of one cross-zone jump (in map units), shared across every routing pass |
 | `MAX_PASSES` | `routing/two_opt.py` | 3 | max improving 2-opt swaps per outer round |
 | `MAX_PASSES` | `routing/or_opt.py` | 3 | max improving or-opt relocations per outer round |
 | `DIFFERENT_ZONE_PENALTY` | `routing/distance.py` | 1e6 | synthetic distance for cross-zone neighbours |
@@ -312,7 +336,12 @@ guides_generator/
         start.py                       # spawn-anchor heuristic for natural tier
         two_opt.py                     # 2-opt refinement pass
         or_opt.py                      # or-opt refinement pass (incremental cost)
-        tour.py                        # route_subguide orchestrator (alternates 2-opt + or-opt)
+        three_opt.py                   # 3-opt refinement (capped at THREE_OPT_MAX_ENTRIES)
+        held_karp.py                   # exact DP for tours <=12 entries
+        stop_2opt.py                   # stop-level 2-opt finisher
+        stop_or_opt.py                 # stop-level or-opt finisher
+        multistart.py                  # K=64 randomized rebuilds + ILS escape
+        tour.py                        # route_subguide orchestrator (always-on multistart)
         stats.py                       # compute_tour_stats
     output/                            # GuideLime-Lua emission
         sanitize.py                    # UTF-8 -> safe ASCII subset

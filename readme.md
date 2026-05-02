@@ -85,6 +85,11 @@ addons/
     │   └── ...
     └── ...                    (30 addons for TBC — all known factions)
 _quality_report.md             (slim global summary, written by --all only)
+dist/
+└── tbc/                       (CurseForge-ready zips, one per addon)
+    ├── Guidelime_ThPi_DarnassusRepGuide.zip   (CHANGELOG, README, LICENSE,
+    │                                           .toc, .lua — no QUALITY_REPORT)
+    └── ...                    (built automatically by --all)
 ```
 
 The folder prefix `Guidelime_<AUTHOR>_` matches GuideLime's sub-addon
@@ -188,7 +193,10 @@ brackets — those would parse as another tag):
    See `routing/tour.py` for the orchestrator and
    `_experiments_history.md` for the trail that picked the chain.
 8. **Emit** — write `<addon>.toc`, `<addon>.lua`, the per-addon
-   `CHANGELOG.md`, and `README.md`.
+   `CHANGELOG.md`, `README.md` and `LICENSE`.
+9. **Zip** (`--all` only) — bundle the addon directory into
+   `dist/<expansion>/<addon>.zip` so the run produces ready-to-upload
+   archives. `QUALITY_REPORT.md` is excluded from the zip.
 
 ## Routing in detail
 
@@ -376,7 +384,7 @@ Public entry points per package:
 | `zones` | `assign_primary_zone`, `is_self_contained`, `group_by_zone_and_tier`, `get_zone_tier` |
 | `routing` | `route_subguide`, `pick_start_position`, `compute_tour_stats`, `Stop`, `TourEntry` |
 | `output` | `generate_guide`, `GuideEmitter` |
-| `addon` | `write_addon`, `read_changelog`, `addon_name_for_faction`, `guide_title_for_faction` |
+| `addon` | `write_addon`, `zip_addon`, `read_changelog`, `addon_name_for_faction`, `guide_title_for_faction` |
 | `pipeline` | `run_single`, `run_all` |
 | `report` | `write_addon_report`, `write_global_report` |
 | `prompts` | `prompt_faction`, `prompt_expansion` |

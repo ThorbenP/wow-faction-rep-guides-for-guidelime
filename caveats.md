@@ -301,25 +301,26 @@ the ground truth for "what we emitted".
 
 ## 13. Pathing efficiency tracking
 
-`_quality_report.md` (slim global, written by `--all`) ships the same
-headline KPIs in its `## Snapshot` section that previous releases
-had. For larger routing or bucketing changes:
+The headline metric is **rep / map unit** (`Global Rep/Dist` in the
+slim global, `Rep/Dist` per faction). There is no normalised score:
+higher rep/dist is better, with no upper target. Total rep is fixed
+by the input (changes only when buckets shift), so any rep/dist
+movement reflects routing-distance movement.
+
+Workflow for a routing or bucketing change:
 
 1. Save a copy of the current `_quality_report.md` as a baseline.
 2. Make the change, run `python3 create.py --all`.
-3. Compare the headline KPIs of the new report with the baseline. The
-   diff snippet below extracts them.
+3. Compare `Global Rep/Dist` (and the per-faction column) with the
+   baseline. The diff snippet below extracts every snapshot KPI.
 
 For a single-faction iteration (e.g. `--faction sporeggar`), the
 addon's own `QUALITY_REPORT.md` carries the same KPIs scoped to that
-one faction — the same diff trick works, just point it at the
-addon-specific file.
+one faction — point the diff at that file instead.
 
-The KPIs that matter most: `Global ø Score`, `Global Efficiency`,
-`Total Distance`, `X-Jumps`, `Absorption Rate`. The cluster constants
-mostly affect absorption — actual distance reductions come from the
-alternating 2-opt + or-opt refinement passes (`routing/two_opt.py`
-and `routing/or_opt.py`, alternated by `routing/tour.py`).
+`Total Distance`, `X-Jumps` and `Absorption Rate` are kept as
+diagnostics but do **not** feed a composite metric. They are useful
+for understanding *why* rep/dist moved, not as goals on their own.
 
 ### Diff snippet
 
@@ -327,19 +328,19 @@ and `routing/or_opt.py`, alternated by `routing/tour.py`).
 import re
 
 def extract(path):
-    """Works for both the slim global (`Global ø Score`, `Total
-    Distance`, etc.) and per-addon files (`ø Score`, `Distance`, ...) —
-    the optional `Global ` / `Total ` prefixes make the regex match
-    either layout."""
+    """Works for both the slim global (`Global Rep/Dist`, `Total
+    Distance`, ...) and per-addon files (`Rep/Dist`, `Distance`,
+    ...). The optional `Global ` / `Total ` prefixes make each regex
+    match either layout."""
     out = {}
     for line in open(path, encoding='utf-8'):
         for k, pat in [
-            ('Score', r'- \*\*(?:Global )?ø Score\*\*: ([\d.]+)'),
-            ('Eff',   r'- \*\*(?:Global )?Efficiency\*\*: ([\d.]+)'),
-            ('Dist',  r'- \*\*(?:Total )?Distance \(Normal\)\*\*: ([\d.]+)'),
-            ('Jumps', r'- \*\*(?:Total )?X-Jumps \(Normal\)\*\*: (\d+)'),
-            ('Absorp', r'- \*\*Absorption Rate \(Normal\)\*\*: ([\d.]+)%'),
-            ('Lost',  r'- \*\*Lost Quests\*\*: (\d+)'),
+            ('RepDist', r'- \*\*(?:Global )?Rep/Dist\*\*: ([\d.]+)'),
+            ('Dist',    r'- \*\*(?:Total )?Distance \(Normal\)\*\*: ([\d.]+)'),
+            ('Rep',     r'- \*\*(?:Total )?Rep \(Normal\)\*\*: (\d+)'),
+            ('Jumps',   r'- \*\*(?:Total )?X-Jumps \(Normal\)\*\*: (\d+)'),
+            ('Absorp',  r'- \*\*Absorption Rate \(Normal\)\*\*: ([\d.]+)%'),
+            ('Lost',    r'- \*\*Lost Quests\*\*: (\d+)'),
         ]:
             m = re.match(pat, line)
             if m:
@@ -349,7 +350,7 @@ def extract(path):
 b = extract('/tmp/baseline.md')
 t = extract('_quality_report.md')
 for k in b:
-    print(f'{k:<7} {b[k]:>10.2f} -> {t[k]:>10.2f}  diff={t[k]-b[k]:+.2f}')
+    print(f'{k:<8} {b[k]:>10.2f} -> {t[k]:>10.2f}  diff={t[k]-b[k]:+.2f}')
 ```
 
 ### Constants sensitivity (from earlier experiments)
@@ -411,6 +412,15 @@ The current production path is "greedy + alternating 2-opt/or-opt with
 spawn-anchored start, JP=45". Several other ideas were tried; some
 landed, several were dropped. Read this before re-implementing one of
 the dropped ones.
+
+> **Note on the "score" deltas below.** Numbers in the next two tables
+> are historical — they were recorded under the v1.3.x composite
+> efficiency score (50% rep/dist + 25% rep + 15% absorption + 10%
+> jump-penalty). v1.4.0 dropped that composite and switched to plain
+> `rep / map unit` as the headline metric. The directionality (won /
+> lost) of every entry below still stands, but the absolute "+0.5" is
+> not directly comparable to today's rep/dist deltas. New experiments
+> should record their own rep/dist deltas alongside.
 
 ### What landed
 

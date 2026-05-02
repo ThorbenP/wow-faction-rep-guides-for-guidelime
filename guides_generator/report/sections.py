@@ -14,6 +14,13 @@ Two reports are produced from the same per-faction stats:
 Each `render_*` function appends to a shared list of lines so callers
 can compose reports without building intermediate strings. The
 orchestrator (`writer.py`) decides which renderers run for which file.
+
+The headline metric across this whole module is **rep / map unit**:
+how much reputation a sub-guide delivers per unit of intra-zone walking
+distance. There is no normalised 0-100 score — higher is better, with
+no upper target. A change is an improvement if rep/dist goes up; the
+absolute number is meaningful for trend tracking, not for comparison
+between factions.
 """
 from __future__ import annotations
 
@@ -58,10 +65,10 @@ def render_glossary(lines: list[str]) -> None:
         '',
         '### Prefixes',
         '- **N-** = the normal section of a sub-guide (quests that stay inside the',
-        '  zone). Feeds into every efficiency metric.',
+        '  zone). Feeds into the rep-per-distance metric.',
         '- **C-** = the complex section (cross-zone chains). Reported **for info',
-        '  only** — it does NOT feed into the score or rep-per-distance, because',
-        '  the long cross-zone legs would distort the metric.',
+        '  only** — it does NOT feed into rep-per-distance, because the long',
+        '  cross-zone legs would distort the metric.',
         '',
         '### Pathing metrics (normal section)',
         '- **N-Dist**: sum of intra-zone euclidean map distance. Cross-zone hops',
@@ -73,20 +80,13 @@ def render_glossary(lines: list[str]) -> None:
         '- **N-Cluster**: number of cluster entries (groups of stops at the same',
         '  location, emitted together).',
         '- **N-Absorp** (absorption rate): fraction of stops sitting in clusters',
-        '  with size >= 2. High is good (cluster discovery groups stops well).',
-        '- **N-Rep**: total rep from the normal-section quests.',
-        '- **N-Rep/Dist**: rep per map-unit walked. Higher is better.',
-        '',
-        '### Efficiency score (0-100)',
-        'A composite metric combining four pathing signals:',
-        '- 50% rep / distance (logarithmic: rpd=10 -> 52p, 50 -> 85p, 100+ -> 100p)',
-        '- 25% total rep (sqrt: 5000 -> 71p, 10000+ -> 100p) — rewards big sub-guides',
-        '- 15% absorption rate (linear)',
-        '- 10% cross-zone-jump penalty (0 jumps = 100p, 10+ = 0p)',
-        '',
-        'Visible in the sub-guide title as `(Eff. <score>, +<rep> rep)`.',
-        '',
-        '**Scale**: 80+ excellent, 60-79 solid, 40-59 mediocre, 20-39 weak, 0-19 poor.',
+        '  with size >= 2. Diagnostic only — feeds nothing.',
+        '- **N-Rep**: total rep from the normal-section quests. Fixed by the',
+        '  input — does not move with routing changes.',
+        '- **N-Rep/Dist**: rep per map-unit walked. **The headline quality',
+        '  metric.** Higher is better, with no upper target. Track this when',
+        '  comparing routing-method changes — if it went up, the new method',
+        '  is better.',
         '',
     ]
 
@@ -96,7 +96,7 @@ def render_glossary(lines: list[str]) -> None:
 
 def render_global_snapshot(
     lines: list[str], grand: dict, totals: dict, total_subs: int,
-    global_avg_score: float, n_factions: int,
+    n_factions: int,
 ) -> None:
     """Headline KPIs across every faction in the bulk run."""
     abs_rate = (grand['n_clustered'] / grand['n_stops']) if grand['n_stops'] else 0.0
@@ -104,19 +104,20 @@ def render_global_snapshot(
     lines += [
         '## Snapshot',
         '',
-        'Most important KPIs for diff comparisons. Routing/bucketing changes',
-        'should improve these (score up, distance down, lost down).',
+        'Headline KPIs for diff comparisons. Routing changes should push',
+        '**rep/dist up** and **distance down**; everything else is diagnostic.',
         '',
-        f'- **Global ø Score**: {global_avg_score:.1f} / 100 — '
-        f'rep-weighted average across all sub-guides',
-        f'- **Global Efficiency**: {rpd_global:.2f} rep / map unit',
+        f'- **Global Rep/Dist**: {rpd_global:.2f} rep / map unit '
+        '— *the* quality metric, higher is better',
         f'- **Total Distance (Normal)**: {grand["n_dist"]:.0f} map units',
-        f'- **Total X-Jumps (Normal)**: {grand["n_jumps"]}',
-        f'- **Absorption Rate (Normal)**: {abs_rate:.1%}',
+        f'- **Total Rep (Normal)**: {grand["n_rep"]} '
+        '— input-fixed, does not move with routing changes',
+        f'- **Total X-Jumps (Normal)**: {grand["n_jumps"]} (diagnostic)',
+        f'- **Absorption Rate (Normal)**: {abs_rate:.1%} (diagnostic)',
         f'- **Lost Quests**: {totals["dropped"]} (of {totals["input"]})',
         f'- **Sub-Guides Total**: {total_subs} across {n_factions} factions',
         '',
-        '### Complex section (info only, not part of the efficiency)',
+        '### Complex section (info only, not part of the headline metric)',
         f'- distance: {grand["c_dist"]:.0f} | x-jumps: {grand["c_jumps"]} | rep: {grand["c_rep"]}',
         '',
     ]
@@ -126,84 +127,99 @@ def render_global_faction_comparison(lines: list[str], valid: list) -> None:
     """One row per faction with the columns that move with code changes.
     Static input counts are intentionally omitted — they live in each
     addon's per-addon report, where they are more useful in context.
+
+    Sorted by **N-Rep/Dist** descending, so factions where routing has
+    the most leverage sit at the top.
     """
     lines += [
         '## Faction Comparison',
         '',
-        'Per-faction KPIs that respond to routing changes. For sub-guide',
-        'detail and dropped quests, see the addon-specific',
-        '`QUALITY_REPORT.md`.',
+        'Per-faction KPIs that respond to routing changes. Sorted by',
+        '`N-Rep/Dist` (the headline metric). For sub-guide detail and',
+        'dropped quests, see the addon-specific `QUALITY_REPORT.md`.',
         '',
-        '| Faction | Sub-Guides | Lost | N-Dist | N-Jumps | N-Absorp | N-Rep/Dist | ø Score |',
+        '| Faction | Sub-Guides | Lost | N-Dist | N-Jumps | N-Absorp | N-Rep | **N-Rep/Dist** |',
         '|---|---:|---:|---:|---:|---:|---:|---:|',
     ]
+
+    rows: list[tuple[float, str]] = []
     for entry in valid:
         fname, _fid, _, _, stats = entry
         t = stats['totals']
         agg = aggregate_pathing(stats)
         lost_flag = f'**{t["dropped_no_zone"]}**' if t['dropped_no_zone'] else '0'
+        rpd_value = (
+            agg['normal_rep'] / agg['normal_distance']
+            if agg['normal_distance'] > 0 else float('inf')
+        )
         rep_per_dist = (
-            f'**{agg["normal_rep"] / agg["normal_distance"]:.1f}**'
-            if agg['normal_distance'] > 0 else '∞'
+            f'**{rpd_value:.2f}**' if agg['normal_distance'] > 0 else '∞'
         )
-        scored = [(sg['efficiency_score'], sg.get('normal_rep', 0))
-                  for sg in stats['sub_guides'] if sg['normal_quests'] > 0]
-        if scored:
-            sw = sum(w for _, w in scored)
-            avg_score = (
-                sum(s * w for s, w in scored) / sw if sw > 0
-                else sum(s for s, _ in scored) / len(scored)
-            )
-            avg_label = f'**{avg_score:.0f}**'
-        else:
-            avg_label = '—'
-        n_absorp = (agg['normal_clustered'] / agg['normal_stops']) if agg['normal_stops'] else 0.0
+        n_absorp = (
+            agg['normal_clustered'] / agg['normal_stops']
+            if agg['normal_stops'] else 0.0
+        )
         n_subs = len(stats['sub_guides'])
-        lines.append(
+        row = (
             f'| {fname} | {n_subs} | {lost_flag} | '
-            f'{agg["normal_distance"]:.0f} | {agg["normal_jumps"]} | {n_absorp:.0%} | '
-            f'{rep_per_dist} | {avg_label} |'
+            f'{agg["normal_distance"]:.0f} | {agg["normal_jumps"]} | '
+            f'{n_absorp:.0%} | {agg["normal_rep"]} | {rep_per_dist} |'
         )
+        rows.append((rpd_value, row))
+
+    rows.sort(key=lambda x: x[0], reverse=True)
+    for _, row in rows:
+        lines.append(row)
     lines.append('')
 
 
 def render_global_top_bottom(lines: list[str], valid: list) -> None:
-    """Top/bottom 20 sub-guides — the global optimization candidate list."""
-    all_sgs: list[tuple[str, str, dict]] = []
+    """Top/bottom 20 sub-guides — the global optimization candidate list,
+    ranked by rep/dist. Sub-guides with no walking distance (everything
+    at one NPC) sit at the top with infinite rpd; they are listed last
+    in the top group so they do not crowd out the genuinely tight tours.
+    """
+    all_sgs: list[tuple[str, str, dict, float]] = []
     for r in valid:
         for sg in r[4]['sub_guides']:
             if sg['normal_quests'] > 0:
-                all_sgs.append((r[0], sg['name'], sg))
-    all_sgs.sort(key=lambda x: x[2]['efficiency_score'], reverse=True)
+                rpd = sg.get('rep_per_dist', 0.0)
+                all_sgs.append((r[0], sg['name'], sg, rpd))
+    # Push zero-distance entries to the bottom of the "top" list — they
+    # are real perfection cases but not informative as the headline.
+    all_sgs.sort(key=lambda x: (x[3] != float('inf'), x[3]), reverse=True)
 
     lines += [
-        '## Top 20 Sub-Guides by Score',
+        '## Top 20 Sub-Guides by Rep/Dist',
         '',
-        '| Rank | Faction | Sub-Guide | **Score** | N-Rep | N-Dist | N-Rep/Dist |',
-        '|---:|---|---|---:|---:|---:|---:|',
+        '| Rank | Faction | Sub-Guide | **N-Rep/Dist** | N-Rep | N-Dist |',
+        '|---:|---|---|---:|---:|---:|',
     ]
-    for i, (fname, sname, sg) in enumerate(all_sgs[:20], 1):
+    for i, (fname, sname, sg, rpd) in enumerate(all_sgs[:20], 1):
         n_dist, _, _, _, n_rep = sg_pathing_normal(sg)
-        rpd = f'{n_rep / n_dist:.2f}' if n_dist > 0 else '∞'
+        rpd_label = f'**{rpd:.2f}**' if n_dist > 0 else '**∞**'
         lines.append(
-            f'| {i} | {fname} | {sname} | **{sg["efficiency_score"]}** | '
-            f'{n_rep} | {n_dist:.0f} | {rpd} |'
+            f'| {i} | {fname} | {sname} | {rpd_label} | '
+            f'{n_rep} | {n_dist:.0f} |'
         )
     lines.append('')
     lines += [
-        '## Bottom 20 Sub-Guides by Score',
+        '## Bottom 20 Sub-Guides by Rep/Dist',
         '',
-        'Optimisation candidates. Low score, lots of distance, or little rep.',
+        'Optimisation candidates: rep is low *for the distance walked*. Note',
+        'that 1-quest cleanup sub-guides naturally land here — there is',
+        'nothing for routing to improve on a single fixed walk, so a low',
+        'rep/dist there reflects the input, not a routing failure.',
         '',
-        '| Rank | Faction | Sub-Guide | **Score** | N-Rep | N-Dist | N-Rep/Dist |',
+        '| Rank | Faction | Sub-Guide | **N-Rep/Dist** | N-Rep | N-Dist | Quests |',
         '|---:|---|---|---:|---:|---:|---:|',
     ]
-    for i, (fname, sname, sg) in enumerate(reversed(all_sgs[-20:]), 1):
+    for i, (fname, sname, sg, rpd) in enumerate(reversed(all_sgs[-20:]), 1):
         n_dist, _, _, _, n_rep = sg_pathing_normal(sg)
-        rpd = f'{n_rep / n_dist:.2f}' if n_dist > 0 else '∞'
+        rpd_label = f'**{rpd:.2f}**' if n_dist > 0 else '∞'
         lines.append(
-            f'| {i} | {fname} | {sname} | **{sg["efficiency_score"]}** | '
-            f'{n_rep} | {n_dist:.0f} | {rpd} |'
+            f'| {i} | {fname} | {sname} | {rpd_label} | '
+            f'{n_rep} | {n_dist:.0f} | {sg["normal_quests"]} |'
         )
     lines.append('')
 
@@ -219,18 +235,14 @@ def render_addon_snapshot(
     fully comparable file.
     """
     agg = aggregate_pathing(stats)
-    abs_rate = (agg['normal_clustered'] / agg['normal_stops']) if agg['normal_stops'] else 0.0
-    rpd = (agg['normal_rep'] / agg['normal_distance']) if agg['normal_distance'] > 0 else 0.0
-
-    scored = [(sg['efficiency_score'], sg.get('normal_rep', 0))
-              for sg in stats['sub_guides'] if sg['normal_quests'] > 0]
-    if scored:
-        sw = sum(w for _, w in scored)
-        avg = sum(s * w for s, w in scored) / sw if sw > 0 else sum(
-            s for s, _ in scored
-        ) / len(scored)
-    else:
-        avg = 0.0
+    abs_rate = (
+        agg['normal_clustered'] / agg['normal_stops']
+        if agg['normal_stops'] else 0.0
+    )
+    rpd = (
+        agg['normal_rep'] / agg['normal_distance']
+        if agg['normal_distance'] > 0 else 0.0
+    )
 
     n_subs = len(stats['sub_guides'])
     t = stats['totals']
@@ -238,12 +250,12 @@ def render_addon_snapshot(
     lines += [
         '## Snapshot',
         '',
-        f'- **ø Score**: {avg:.1f} / 100',
-        f'- **Efficiency**: {rpd:.2f} rep / map unit',
+        f'- **Rep/Dist**: {rpd:.2f} rep / map unit '
+        '— headline metric, higher is better',
         f'- **Distance (Normal)**: {agg["normal_distance"]:.0f} map units',
-        f'- **X-Jumps (Normal)**: {agg["normal_jumps"]}',
-        f'- **Absorption Rate (Normal)**: {abs_rate:.1%}',
-        f'- **Total Rep (Normal)**: {agg["normal_rep"]}',
+        f'- **Total Rep (Normal)**: {agg["normal_rep"]} (input-fixed)',
+        f'- **X-Jumps (Normal)**: {agg["normal_jumps"]} (diagnostic)',
+        f'- **Absorption Rate (Normal)**: {abs_rate:.1%} (diagnostic)',
         f'- **Sub-Guides**: {n_subs}',
     ]
     if t['dropped_no_zone']:
@@ -251,7 +263,7 @@ def render_addon_snapshot(
     if agg['complex_distance'] > 0 or agg['complex_rep'] > 0:
         lines += [
             '',
-            '### Complex section (info only, not part of the efficiency)',
+            '### Complex section (info only, not part of the headline metric)',
             f'- distance: {agg["complex_distance"]:.0f} | '
             f'x-jumps: {agg["complex_jumps"]} | rep: {agg["complex_rep"]}',
         ]
@@ -259,17 +271,21 @@ def render_addon_snapshot(
 
 
 def render_addon_subguides(lines: list[str], stats: dict) -> None:
-    """Per-sub-guide table for one faction. Sorted by score so the best
-    work is at the top and optimisation candidates sit at the bottom."""
+    """Per-sub-guide table for one faction. Sorted by **rep/dist**
+    descending, so the densest sub-guides sit at the top and the
+    optimisation candidates at the bottom. 1-quest sub-guides with
+    fixed walk land low naturally — that reflects the input, not a
+    routing failure.
+    """
     lines += [
         '## Sub-Guides',
         '',
-        '| Sub-Guide | Score | Quests | N-Dist | N-Jumps | N-Cluster | N-Absorp | N-Rep/Dist |',
+        '| Sub-Guide | **Rep/Dist** | Quests | N-Dist | N-Jumps | N-Cluster | N-Absorp | N-Rep |',
         '|---|---:|---:|---:|---:|---:|---:|---:|',
     ]
     sgs_sorted = sorted(
         stats['sub_guides'],
-        key=lambda sg: (sg['efficiency_score'], sg.get('normal_rep', 0)),
+        key=lambda sg: (sg.get('rep_per_dist', 0.0), sg.get('normal_rep', 0)),
         reverse=True,
     )
     for sg in sgs_sorted:
@@ -277,11 +293,11 @@ def render_addon_subguides(lines: list[str], stats: dict) -> None:
         cq = sg['complex_quests']
         quests_label = f'{nq + cq}' if cq == 0 else f'{nq + cq} ({nq}+{cq})'
         n_dist, n_jumps, n_clusters, n_absorp, n_rep = sg_pathing_normal(sg)
-        rep_per = f'{n_rep / n_dist:.2f}' if n_dist > 0 else '∞'
-        score = sg['efficiency_score']
+        rpd = sg.get('rep_per_dist', 0.0)
+        rpd_label = f'**{rpd:.2f}**' if n_dist > 0 else '**∞**'
         lines.append(
-            f'| {sg["name"]} | **{score}** | {quests_label} | '
-            f'{n_dist:.0f} | {n_jumps} | {n_clusters} | {n_absorp:.0%} | {rep_per} |'
+            f'| {sg["name"]} | {rpd_label} | {quests_label} | '
+            f'{n_dist:.0f} | {n_jumps} | {n_clusters} | {n_absorp:.0%} | {n_rep} |'
         )
     lines.append('')
 

@@ -67,13 +67,11 @@ def write_global_report(
     if not valid:
         return ''
 
-    grand, totals, total_subs, global_avg_score = _summarise(valid)
+    grand, totals, total_subs = _summarise(valid)
 
     lines: list[str] = []
     render_global_header(lines, version, expansion)
-    render_global_snapshot(
-        lines, grand, totals, total_subs, global_avg_score, len(valid),
-    )
+    render_global_snapshot(lines, grand, totals, total_subs, len(valid))
     render_global_faction_comparison(lines, valid)
     render_global_top_bottom(lines, valid)
 
@@ -85,7 +83,12 @@ def write_global_report(
     return path
 
 
-def _summarise(valid: list) -> tuple[dict, dict, int, float]:
+def _summarise(valid: list) -> tuple[dict, dict, int]:
+    """Aggregate raw counts across factions. The headline metric
+    (`Global Rep/Dist = grand['n_rep'] / grand['n_dist']`) is computed
+    in the renderer rather than here so the snapshot stays expressive
+    when totals are zero.
+    """
     aggs = [aggregate_pathing(r[4]) for r in valid]
     grand = {
         'n_dist':      sum(a['normal_distance'] for a in aggs),
@@ -104,20 +107,4 @@ def _summarise(valid: list) -> tuple[dict, dict, int, float]:
         'dropped': sum(r[4]['totals']['dropped_no_zone'] for r in valid),
     }
     total_subs = sum(len(r[4]['sub_guides']) for r in valid)
-
-    # Global ø score, weighted by normal rep across all sub-guides.
-    all_scored: list[tuple[int, int]] = []
-    for r in valid:
-        for sg in r[4]['sub_guides']:
-            if sg['normal_quests'] > 0:
-                all_scored.append((sg['efficiency_score'], sg.get('normal_rep', 0)))
-    if all_scored:
-        sw = sum(w for _, w in all_scored)
-        global_avg_score = (
-            sum(s * w for s, w in all_scored) / sw if sw > 0
-            else sum(s for s, _ in all_scored) / len(all_scored)
-        )
-    else:
-        global_avg_score = 0.0
-
-    return grand, totals, total_subs, global_avg_score
+    return grand, totals, total_subs

@@ -19,7 +19,6 @@ from ..zones import get_zone_tier
 from .chain_index import build_chain_index, disambiguate_duplicate_names
 from .emitter import GuideEmitter
 from .sanitize import safe_text
-from .score import compute_efficiency_score
 
 
 def guide_category(faction_name: str) -> str:
@@ -58,7 +57,6 @@ def emit_sub_guide(
     total_rep = zone_rep + complex_rep
     category = guide_category(faction_name)
 
-    # Run the routing first — the efficiency score is part of the title.
     # Spawn anchor only for natural-tier sub-guides: a player arriving in a
     # starter zone naturally begins at the lowest-level quest. Cleanup
     # buckets are off-tier returns where the player drops in from anywhere,
@@ -71,12 +69,9 @@ def emit_sub_guide(
         zone_quests, start_pos=start_pos, cluster_radius=cluster_radius,
     )
     normal_pathing = compute_tour_stats(tour)
-    score = compute_efficiency_score(
-        normal_rep=zone_rep,
-        normal_distance=normal_pathing['intra_zone_distance'],
-        normal_jumps=normal_pathing['cross_zone_jumps'],
-        absorption_rate=normal_pathing['absorption_rate'],
-        has_normal_quests=bool(zone_quests),
+    rep_per_dist = (
+        zone_rep / normal_pathing['intra_zone_distance']
+        if normal_pathing['intra_zone_distance'] > 0 else 0.0
     )
 
     safe_display = safe_text(display_name)
@@ -84,12 +79,11 @@ def emit_sub_guide(
     out.append('Guidelime.registerGuide([[')
     out.append(
         f'[N {lvl_min}-{lvl_max} {safe_display} '
-        f'(Eff. {score}, +{total_rep} rep)]'
+        f'(+{total_rep} rep)]'
     )
     desc = (
         f'[D {len(zone_quests)} quests in *{safe_display}*. '
-        f'\\\\ ~{zone_rep} rep for *{safe_faction}*. '
-        f'\\\\ Efficiency score: *{score}/100*.'
+        f'\\\\ ~{zone_rep} rep for *{safe_faction}*.'
     )
     if complex_quests:
         desc += (
@@ -129,7 +123,7 @@ def emit_sub_guide(
         'complex_steps': step_count(complex_quests) if complex_quests else None,
         'orphans': len(orphans),
         'rep_total': total_rep,
-        'efficiency_score': score,
+        'rep_per_dist': rep_per_dist,
         'normal_rep': zone_rep,
         'complex_rep': complex_rep,
         'normal_pathing': normal_pathing,
@@ -193,7 +187,7 @@ def emit_complex_sub_guide(
         'complex_steps': step_count(quests),
         'orphans': len(orphans),
         'rep_total': rep_total,
-        'efficiency_score': 0,  # global fallback has no normal section
+        'rep_per_dist': 0.0,  # global fallback has no normal section
         'normal_rep': 0,
         'complex_rep': rep_total,
         'normal_pathing': None,

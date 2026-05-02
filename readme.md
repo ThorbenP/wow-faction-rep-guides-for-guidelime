@@ -88,9 +88,8 @@ Each addon registers one `Guidelime.registerGuide([[...]], "category")`
 block per zone bucket. A typical sub-guide looks like this:
 
 ```
-[N 18-30 Ashenvale (Eff. 65, +10350 rep)]
+[N 18-30 Ashenvale (+10350 rep)]
 [D 42 quests in *Ashenvale*. \\ ~9375 rep for *Darnassus*.
-   \\ Efficiency score: *65/100*.
    \\ + 10 complex quests (chain leading to other zones, +475 rep).]
 [GA Alliance]
 
@@ -116,10 +115,10 @@ block per zone bucket. A typical sub-guide looks like this:
 
 Key elements:
 
-- **Title** — `[N min-max <zone> (Eff. <score>, +<rep> rep)]` with the
-  efficiency score for the sub-guide front and centre.
-- **Description** — `[D ...]` with quest count, total rep, the score, and
-  any complex-quest summary.
+- **Title** — `[N min-max <zone> (+<rep> rep)]` so the player sees the
+  reward up front when picking which sub-guide to do.
+- **Description** — `[D ...]` with quest count, total rep, and any
+  complex-quest summary.
 - **Chain index** — opening `[OC]` block listing every quest chain in
   the sub-guide, so the player sees the structure up front.
 - **Cluster header** — emitted only for clusters with two or more stops:
@@ -321,7 +320,6 @@ guides_generator/
         tags.py                        # [A race/class] tag construction
         emitter.py                     # GuideEmitter (stateful tag-line renderer)
         header.py                      # file-top comment block
-        score.py                       # 0..100 efficiency score
         sub_guide.py                   # one Guidelime.registerGuide(...) block
         guide.py                       # generate_guide orchestrator
     addon/                             # write addon directory
@@ -351,7 +349,7 @@ Public entry points per package:
 | `zones` | `assign_primary_zone`, `is_self_contained`, `group_by_zone_and_tier`, `get_zone_tier` |
 | `chains` | `find_chains`, `topo_sort` |
 | `routing` | `route_subguide`, `pick_start_position`, `compute_tour_stats`, `Stop`, `TourEntry` |
-| `output` | `generate_guide`, `compute_efficiency_score`, `GuideEmitter` |
+| `output` | `generate_guide`, `GuideEmitter` |
 | `addon` | `write_addon`, `read_changelog`, `addon_name_for_faction`, `guide_title_for_faction` |
 | `pipeline` | `run_single`, `run_all` |
 | `report` | `write_addon_report`, `write_global_report` |
@@ -375,18 +373,22 @@ game versions never collide on the same filename.
 
 ## Quality report
 
-Every `--all` run rewrites `_quality_report.md` (next to the addons
-folder, not inside it). Sections:
+Two complementary files are emitted:
 
-1. **Snapshot Headline** — the seven KPIs that move with code changes
-   (global score, efficiency, total distance, cross-zone jumps,
-   absorption rate, lost quests, sub-guide count).
-2. **Faction comparison** — diff-relevant columns per faction.
-3. **Per-faction detail** — sub-guide table sorted by efficiency score.
-4. **Faction ranking** by rep / distance.
-5. **Top 20 sub-guides** by score.
-6. **Bottom 20 sub-guides** by score (optimisation candidates).
-7. **Input data** — static quest counts (sanity check).
+- `<addon_dir>/QUALITY_REPORT.md` — one per addon. Self-contained
+  faction snapshot, sub-guide table, dropped-quest list, glossary.
+  Single-faction (`--faction`) and bulk (`--all`) runs both write it,
+  so a per-faction tuning loop can diff this file directly.
+- `_quality_report.md` at the repo root — slim global summary across
+  every faction (bulk runs only). Snapshot, faction comparison,
+  global top/bottom-20 sub-guides.
+
+The headline metric is **N-Rep/Dist** — rep delivered per map unit
+walked. Higher is better, with no upper target. There is no
+normalised 0-100 score: a routing change is an improvement if
+`Global Rep/Dist` (in the slim global) or the per-faction
+`Rep/Dist` (in the addon report) goes up. Distance, x-jumps and
+absorption are kept as diagnostics but do not feed a composite.
 
 The report is intended for the maintainer; it is not part of the
 distributed addons.

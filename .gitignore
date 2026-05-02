@@ -4,7 +4,6 @@ __pycache__/
 *$py.class
 *.egg-info/
 build/
-dist/
 
 # Virtual environments
 .venv/
@@ -34,3 +33,4 @@ desktop.ini
 # Generator artefacts — regenerated on every run
 cache/
 addons/
+dist/

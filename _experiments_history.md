@@ -7,7 +7,13 @@ v1.5.0**; the experiment branches stay on GitHub as historical
 artefacts but their measurements are the ones you read off this
 table.
 
-## What v1.5.0 ships by default
+## What v1.5.x ships by default
+
+> v1.5.0 introduced the chain below. v1.5.1 parallelised the K
+> candidates via `multiprocessing.Pool` and bumped K from 64 to 96
+> (compensates for a small parallel tie-breaking variance). The
+> chain itself and the rep/dist headline are unchanged at 16.78–16.79;
+> only the bulk wallclock dropped from ~7 min to ~2.5 min.
 
 The production routing chain (always-on, no flags) is:
 

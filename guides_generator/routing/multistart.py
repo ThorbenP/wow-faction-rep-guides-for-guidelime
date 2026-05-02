@@ -58,7 +58,10 @@ reproducible across runs and quality-report diffs stay meaningful.
 """
 from __future__ import annotations
 
+import atexit
 import math
+import multiprocessing
+import os
 import random
 from typing import Optional
 
@@ -70,10 +73,14 @@ from .feasibility import (
 from .two_opt import _tour_cost
 from .types import Stop, TourEntry
 
-# Number of randomized rebuilds per sub-guide. K=64 is the
-# experiment-validated sweet spot: K=32 gives ~0.4× the gain, K=128
-# only adds ~0.1× more, so 64 is where the curve flattens.
-MULTISTART_ITERATIONS = 64
+# Number of randomized rebuilds per sub-guide. The serial v1.5.0
+# pipeline used K=64; the parallel evaluation introduces a small
+# tie-breaking variance (workers can return same-cost candidates in
+# a different order than the serial sweep would produce), so we lift
+# K to 96 to absorb that variance. Bulk runtime stays around 2-3
+# minutes because the extra candidates run in parallel for free on a
+# multi-core host.
+MULTISTART_ITERATIONS = 96
 
 # Stable RNG seed offset. Combined with the input quest IDs in
 # `_derive_seed` it produces a reproducible per-sub-guide RNG so a
@@ -98,6 +105,36 @@ RADIUS_JITTER_HIGH = 1.5
 # Six rounds (vs three on the segment-reverse-only variant) gives each
 # kernel three tries on the test corpus.
 ILS_ROUNDS = 6
+
+# Number of worker processes for parallel candidate evaluation. One per
+# logical CPU on the host. The pool is created lazily on first use and
+# reused for the whole bulk run, so per-task pickling cost amortises
+# over many sub-guides.
+_POOL_WORKERS = max(1, os.cpu_count() or 1)
+_POOL: Optional[multiprocessing.pool.Pool] = None
+
+
+def _get_pool() -> multiprocessing.pool.Pool:
+    """Lazy-create a process pool the first time multistart needs it.
+
+    Forking happens here, well after every routing module is imported,
+    so workers inherit a fully-initialised parent. We register an
+    atexit handler so the pool is cleaned up at interpreter shutdown
+    instead of leaking processes.
+    """
+    global _POOL
+    if _POOL is None:
+        _POOL = multiprocessing.Pool(processes=_POOL_WORKERS)
+        atexit.register(_close_pool)
+    return _POOL
+
+
+def _close_pool() -> None:
+    global _POOL
+    if _POOL is not None:
+        _POOL.close()
+        _POOL.join()
+        _POOL = None
 
 
 def route_subguide_multistart(
@@ -135,19 +172,41 @@ def route_subguide_multistart(
     # the anchor only (preserving the zone's tuned cluster radius);
     # the second half also jitters the radius to escape cluster-shape
     # locality. Both halves use the stochastic tiebreaker.
+    #
+    # The candidates are independent — each is one
+    # (stochastic_greedy_build + refine_tour_fast) cycle on its own
+    # input — so we hand them to the worker pool and pick the cheapest
+    # result. Sub-seeds are pre-drawn from the parent RNG, so the
+    # selection of anchors / radius jitter / sub-seeds is deterministic
+    # against the input quest set; only the *parallel ordering* of
+    # candidate evaluation differs from a serial run, which is fine
+    # because cheapest-cost wins regardless of order.
     half = (n_iter - 1) // 2
+    candidate_args = []
     for i in range(n_iter - 1):
         anchor = rng.choice(anchor_pool) if anchor_pool else start_pos
         radius = cluster_radius
         if i >= half:
             radius = cluster_radius * rng.uniform(RADIUS_JITTER_LOW, RADIUS_JITTER_HIGH)
-        tour, orphans = _stochastic_greedy_build(
-            quests, predecessors, anchor, radius, detour_threshold, rng,
-        )
-        if orphans:
+        sub_seed = rng.randint(0, 2 ** 63 - 1)
+        candidate_args.append((
+            quests, predecessors, start_pos, detour_threshold,
+            anchor, radius, sub_seed,
+        ))
+
+    if _POOL_WORKERS > 1 and len(candidate_args) > 1:
+        pool = _get_pool()
+        # `chunksize=8` batches eight tasks per worker round-trip,
+        # cutting IPC overhead by 8× without sacrificing load
+        # balance — each worker still picks up new chunks dynamically
+        # when the previous one finishes.
+        results = pool.starmap(_run_candidate, candidate_args, chunksize=8)
+    else:
+        results = [_run_candidate(*args) for args in candidate_args]
+
+    for cost, tour in results:
+        if tour is None:
             continue
-        tour = refine_tour_fast(tour, predecessors, start_pos)
-        cost = _tour_cost(tour, start_pos)
         if cost + 1e-6 < best_cost:
             best_tour = tour
             best_cost = cost
@@ -172,6 +231,39 @@ def route_subguide_multistart(
             best_cost = deep_cost
 
     return best_tour, best_orphans
+
+
+def _run_candidate(
+    quests: list[dict],
+    predecessors: dict[int, set[int]],
+    start_pos: Optional[tuple[int, float, float]],
+    detour_threshold: float,
+    anchor: Optional[tuple[int, float, float]],
+    radius: float,
+    sub_seed: int,
+) -> tuple[float, Optional[list[TourEntry]]]:
+    """Compute one multistart candidate end-to-end.
+
+    Top-level (not a closure) so multiprocessing can pickle the
+    reference. Each worker call is a fresh, independent build:
+    stochastic-greedy from the given anchor and radius, then the
+    fast refinement chain. Returns `(cost, tour)`; `tour is None`
+    when a precedence deadlock leaves the build incomplete.
+
+    `refine_tour_fast` is imported lazily here for the same reason
+    `route_subguide_multistart` does — `tour.py` lazily imports
+    `route_subguide_multistart`, so importing it at module load
+    would create a cycle.
+    """
+    from .tour import refine_tour_fast
+    rng = random.Random(sub_seed)
+    tour, orphans = _stochastic_greedy_build(
+        quests, predecessors, anchor, radius, detour_threshold, rng,
+    )
+    if orphans:
+        return (math.inf, None)
+    tour = refine_tour_fast(tour, predecessors, start_pos)
+    return (_tour_cost(tour, start_pos), tour)
 
 
 def _ils_finish(

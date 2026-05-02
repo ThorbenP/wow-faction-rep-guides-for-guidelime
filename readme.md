@@ -37,15 +37,17 @@ Each `.toc` carries the matching `## Interface` version
 
 ## Features
 
-- **Tour routing**: greedy nearest-feasible build, K=64 randomized
+- **Tour routing**: greedy nearest-feasible build, K=96 randomized
   multistart rebuilds, then a deep refinement chain on the cheapest
   candidate (alternating 2-opt + or-opt to convergence, 3-opt for
   small tours, Held-Karp DP for tiny tours, stop-level 2-opt and
   or-opt finishers that can break clusters when shorter routes
   exist). All quests' precedence (`pre`, `preg`, `next`) is
-  respected. Single-faction runs cost a few seconds; `--all`
-  takes ~8 minutes. See `_experiments_history.md` for the experiment
-  trail that picked this chain.
+  respected. Multistart candidates are evaluated in parallel across
+  all available CPU cores; single-faction runs cost a few seconds,
+  `--all` takes ~2.5 minutes on a 12-thread host. See
+  `_experiments_history.md` for the experiment trail that picked
+  this chain.
 - **Per-zone sub-guides**: quests are bucketed by their pickup zone, then
   by tier (natural / cleanup) so each zone is a coherent walkthrough.
 - **Cross-zone handling**: chains that leave a zone are extracted into a
@@ -182,7 +184,7 @@ brackets — those would parse as another tag):
    prerequisite ends up in the other bucket, otherwise GuideLime would
    hide the dependent step.
 7. **Routing** — per sub-guide, run the multistart pipeline:
-   K=64 randomized rebuilds, cost-aligned acceptance, ILS escape,
+   K=96 randomized rebuilds, cost-aligned acceptance, ILS escape,
    then the deep refinement chain (2-opt + or-opt + 3-opt + defrag +
    Held-Karp + stop-level 2-opt + stop-level or-opt) on the winner.
    See `routing/tour.py` for the orchestrator and
@@ -210,7 +212,7 @@ in `constants.ZONE_CLUSTER_RADIUS` (up to 25). City- and medium-density
 zones use the default — empirically a smaller radius makes them worse.
 
 The greedy build is just the seed. Every sub-guide goes through
-**multistart** (`routing/multistart.py`) — K=64 randomized rebuilds
+**multistart** (`routing/multistart.py`) — K=96 randomized rebuilds
 plus an ILS escape — and the cheapest result is then run through
 the deep refinement chain (`routing/tour.py:refine_tour`):
 
@@ -272,7 +274,7 @@ Routing constants are scattered across `guides_generator/routing/`:
 | `DETOUR_THRESHOLD` | `routing/tour.py` | 6.0 | maximum extra distance for on-the-way absorption |
 | `MAX_REFINE_ROUNDS` | `routing/tour.py` | 8 | upper bound on alternating 2-opt/or-opt rounds (early-exits on convergence) |
 | `THREE_OPT_MAX_ENTRIES` | `routing/tour.py` | 50 | tour-length cap for the 3-opt sweep (O(N³)) |
-| `MULTISTART_ITERATIONS` | `routing/multistart.py` | 64 | K, the number of randomized rebuilds per sub-guide |
+| `MULTISTART_ITERATIONS` | `routing/multistart.py` | 96 | K, the number of randomized rebuilds per sub-guide |
 | `ILS_ROUNDS` | `routing/multistart.py` | 6 | random shake + re-refine rounds on the multistart winner |
 | `MAX_ENTRIES` | `routing/held_karp.py` | 12 | Held-Karp's O(N²·2^N) cap above which the DP is skipped |
 | `JUMP_PENALTY` | `routing/two_opt.py` | 45.0 | cost of one cross-zone jump (in map units), shared across every routing pass |
@@ -340,7 +342,7 @@ guides_generator/
         held_karp.py                   # exact DP for tours <=12 entries
         stop_2opt.py                   # stop-level 2-opt finisher
         stop_or_opt.py                 # stop-level or-opt finisher
-        multistart.py                  # K=64 randomized rebuilds + ILS escape
+        multistart.py                  # K=96 randomized rebuilds + ILS escape
         tour.py                        # route_subguide orchestrator (always-on multistart)
         stats.py                       # compute_tour_stats
     output/                            # GuideLime-Lua emission

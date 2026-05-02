@@ -10,7 +10,7 @@ from ..quests import (
     drop_unreachable_bridge_chains, expand_with_prereq_bridges,
     filter_quests_by_faction,
 )
-from ..report import write_quality_report
+from ..report import write_addon_report, write_global_report
 from .console import print_bulk_summary
 from .loader import build_and_write, load_quest_db, load_world_dbs
 
@@ -48,6 +48,9 @@ def run_all(expansion: str) -> None:
             version=version, changelog_text=changelog_text,
             complex_quests=complex_quests,
         )
+        write_addon_report(
+            stats, addon_path, fname, faction_id, version, expansion,
+        )
         n_total = len(quests) + len(complex_quests)
         n_dropped = stats['totals']['dropped_no_zone']
         flag = f' (! {n_dropped} without zone)' if n_dropped else ''
@@ -56,4 +59,6 @@ def run_all(expansion: str) -> None:
 
     print('\n[D/D] bulk run finished.')
     print_bulk_summary(results, addons_root, version)
-    write_quality_report(results, addons_top, version, expansion)
+    global_path = write_global_report(results, addons_top, version, expansion)
+    if global_path:
+        print(f'global summary: {global_path}')

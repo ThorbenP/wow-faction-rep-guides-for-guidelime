@@ -1,8 +1,19 @@
-"""Write `_quality_report.md` next to the addons directory.
+"""Write quality-report files.
 
-The report is intended for the maintainer, not the player. It lives in the
-repo root so a player who copies `addons/*` into `Interface/AddOns/` does
-not accidentally take it along.
+Two files are emitted:
+
+- `<addon_dir>/QUALITY_REPORT.md` — one per addon, written next to the
+  addon's `.lua` and `CHANGELOG.md`. Self-contained: glossary, this
+  faction's snapshot, sub-guide detail, input data.
+- `<repo_root>/_quality_report.md` — slim global summary across every
+  faction. Snapshot + faction comparison + top/bottom sub-guides.
+  Per-faction detail intentionally lives in the addon files, not here.
+
+Both reports are derived from the same `(fname, fid, addon_path,
+n_total, stats)` tuples emitted by the bulk and single pipelines.
+
+The root file is the maintainer's quick-look summary; if a player
+copies `addons/*` into `Interface/AddOns/`, it stays in the repo.
 """
 from __future__ import annotations
 
@@ -10,35 +21,68 @@ import os
 
 from .aggregate import aggregate_pathing
 from .sections import (
-    render_faction_comparison, render_faction_ranking, render_glossary,
-    render_header, render_input_data, render_per_faction_detail,
-    render_snapshot, render_top_bottom_subguides,
+    render_addon_header, render_addon_input, render_addon_snapshot,
+    render_addon_subguides, render_global_faction_comparison,
+    render_global_header, render_global_snapshot, render_global_top_bottom,
+    render_glossary,
 )
 
+ADDON_REPORT_FILENAME = 'QUALITY_REPORT.md'
+GLOBAL_REPORT_FILENAME = '_quality_report.md'
 
-def write_quality_report(
+
+def write_addon_report(
+    stats: dict, addon_dir: str, faction_name: str, faction_id: int,
+    version: str, expansion: str,
+) -> str:
+    """Write `<addon_dir>/QUALITY_REPORT.md` and return the path.
+
+    Called from both the bulk and single pipelines, so a single-faction
+    run leaves the same artefact in the addon directory as a full bulk
+    run would.
+    """
+    lines: list[str] = []
+    render_addon_header(lines, faction_name, faction_id, version, expansion)
+    render_glossary(lines)
+    render_addon_snapshot(lines, faction_name, stats)
+    render_addon_subguides(lines, stats)
+    render_addon_input(lines, stats)
+
+    path = os.path.join(addon_dir, ADDON_REPORT_FILENAME)
+    with open(path, 'w', encoding='utf-8') as f:
+        f.write('\n'.join(lines))
+    return path
+
+
+def write_global_report(
     results: list, addons_root: str, version: str, expansion: str,
-) -> None:
-    report_path = os.path.join(
-        os.path.dirname(os.path.abspath(addons_root)), '_quality_report.md',
-    )
+) -> str:
+    """Write the slim `_quality_report.md` next to the addons directory.
 
+    Skipped silently when `results` contains no faction with stats —
+    e.g. when single-faction runs call this for symmetry but the run
+    failed before producing stats.
+    """
     valid = [r for r in results if r[4]]
+    if not valid:
+        return ''
+
     grand, totals, total_subs, global_avg_score = _summarise(valid)
 
     lines: list[str] = []
-    render_header(lines, version, expansion)
-    render_glossary(lines)
-    render_snapshot(lines, grand, totals, total_subs, global_avg_score)
-    render_faction_comparison(lines, valid)
-    render_per_faction_detail(lines, valid)
-    render_faction_ranking(lines, valid)
-    render_top_bottom_subguides(lines, valid)
-    render_input_data(lines, valid, totals, grand)
+    render_global_header(lines, version, expansion)
+    render_global_snapshot(
+        lines, grand, totals, total_subs, global_avg_score, len(valid),
+    )
+    render_global_faction_comparison(lines, valid)
+    render_global_top_bottom(lines, valid)
 
-    with open(report_path, 'w', encoding='utf-8') as f:
+    path = os.path.join(
+        os.path.dirname(os.path.abspath(addons_root)), GLOBAL_REPORT_FILENAME,
+    )
+    with open(path, 'w', encoding='utf-8') as f:
         f.write('\n'.join(lines))
-    print(f'quality report: {report_path}')
+    return path
 
 
 def _summarise(valid: list) -> tuple[dict, dict, int, float]:

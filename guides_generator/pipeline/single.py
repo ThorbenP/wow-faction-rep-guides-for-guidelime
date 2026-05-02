@@ -1,4 +1,10 @@
-"""Single-faction generator — interactive or via `--faction`."""
+"""Single-faction generator — interactive or via `--faction`.
+
+Writes the same per-addon `QUALITY_REPORT.md` a bulk run would, so the
+same artefact is available for diffing whether you regenerate one
+faction or all of them. The slim global `_quality_report.md` is bulk-only
+— a one-row summary would not be useful.
+"""
 from __future__ import annotations
 
 import sys
@@ -8,6 +14,7 @@ from ..constants import CHANGELOG_DIR, FACTION_NAMES
 from ..coords import attach_coords
 from ..prompts import prompt_expansion, prompt_faction
 from ..quests import drop_unreachable_bridge_chains
+from ..report import write_addon_report
 from ..zones import group_by_zone_and_tier
 from .console import (
     print_bucket_stats, print_coverage, print_quest_stats, print_summary,
@@ -54,5 +61,9 @@ def run_single(
         version=version, changelog_text=changelog_text,
         complex_quests=complex_quests,
     )
+    report_path = write_addon_report(
+        stats, addon_path, fname, faction_id, version, expansion,
+    )
     print_summary(fname, faction_id, quests, buckets, addon_path, version)
     print_quest_stats(stats)
+    print(f'quality report: {report_path}')

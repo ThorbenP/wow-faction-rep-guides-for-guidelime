@@ -284,8 +284,9 @@ Ashenvale cleanup, etc.) sometimes appears empty in-game.
 
 ### Diagnosis
 
-`_quality_report.md` shows whether steps were actually emitted. If the
-report has `>0` steps but the sub-guide is empty in-game:
+The addon's own `QUALITY_REPORT.md` (next to its `.lua`) shows whether
+steps were actually emitted. If the report has `>0` steps but the
+sub-guide is empty in-game:
 
 - Quest already completed by the character — GuideLime hides finished
   quests.
@@ -300,13 +301,19 @@ the ground truth for "what we emitted".
 
 ## 13. Pathing efficiency tracking
 
-`_quality_report.md` ships pathing metrics. For larger routing or
-bucketing changes:
+`_quality_report.md` (slim global, written by `--all`) ships the same
+headline KPIs in its `## Snapshot` section that previous releases
+had. For larger routing or bucketing changes:
 
 1. Save a copy of the current `_quality_report.md` as a baseline.
 2. Make the change, run `python3 create.py --all`.
-3. Compare the headline KPIs in section 1 of the new report with the
-   baseline. The diff snippet below extracts them.
+3. Compare the headline KPIs of the new report with the baseline. The
+   diff snippet below extracts them.
+
+For a single-faction iteration (e.g. `--faction sporeggar`), the
+addon's own `QUALITY_REPORT.md` carries the same KPIs scoped to that
+one faction — the same diff trick works, just point it at the
+addon-specific file.
 
 The KPIs that matter most: `Global ø Score`, `Global Efficiency`,
 `Total Distance`, `X-Jumps`, `Absorption Rate`. The cluster constants
@@ -320,13 +327,17 @@ and `routing/or_opt.py`, alternated by `routing/tour.py`).
 import re
 
 def extract(path):
+    """Works for both the slim global (`Global ø Score`, `Total
+    Distance`, etc.) and per-addon files (`ø Score`, `Distance`, ...) —
+    the optional `Global ` / `Total ` prefixes make the regex match
+    either layout."""
     out = {}
     for line in open(path, encoding='utf-8'):
         for k, pat in [
-            ('Score', r'- \*\*Global ø Score\*\*: ([\d.]+)'),
-            ('Eff',   r'- \*\*Global Efficiency\*\*: ([\d.]+)'),
-            ('Dist',  r'- \*\*Total Distance \(Normal\)\*\*: ([\d.]+)'),
-            ('Jumps', r'- \*\*Total X-Jumps \(Normal\)\*\*: (\d+)'),
+            ('Score', r'- \*\*(?:Global )?ø Score\*\*: ([\d.]+)'),
+            ('Eff',   r'- \*\*(?:Global )?Efficiency\*\*: ([\d.]+)'),
+            ('Dist',  r'- \*\*(?:Total )?Distance \(Normal\)\*\*: ([\d.]+)'),
+            ('Jumps', r'- \*\*(?:Total )?X-Jumps \(Normal\)\*\*: (\d+)'),
             ('Absorp', r'- \*\*Absorption Rate \(Normal\)\*\*: ([\d.]+)%'),
             ('Lost',  r'- \*\*Lost Quests\*\*: (\d+)'),
         ]:

@@ -53,10 +53,13 @@ Each `.toc` carries the matching `## Interface` version
 - **Sage-style tags**: only the quest/NPC ID is in the tag body; the name
   is rendered as an italic `*Name*:` prefix. GuideLime resolves names
   itself at runtime.
-- **Quality report**: `_quality_report.md` is written next to the addons
-  folder on every `--all` run with coverage stats, pathing metrics, an
-  efficiency score, and top/bottom sub-guide rankings — useful as a
-  baseline for optimisation work.
+- **Quality reports**: every run writes a per-addon `QUALITY_REPORT.md`
+  (snapshot, sub-guide breakdown, dropped quests) into the addon's own
+  directory — so a single-faction `--faction` run produces the same
+  artefact you would get from a full bulk pass. `--all` additionally
+  writes the slim `_quality_report.md` at the repo root, with the
+  global snapshot, faction comparison, and top/bottom-20 sub-guide
+  ranking. Useful as a baseline when iterating on routing.
 
 ## Output layout
 
@@ -67,11 +70,12 @@ addons/
     │   ├── Guidelime_ThPi_DarnassusRepGuide.toc
     │   ├── Guidelime_ThPi_DarnassusRepGuide.lua
     │   ├── CHANGELOG.md
-    │   └── README.md          (faction- and expansion-specific player readme)
+    │   ├── README.md          (faction- and expansion-specific player readme)
+    │   └── QUALITY_REPORT.md  (per-addon pathing metrics, written every run)
     ├── Guidelime_ThPi_IronforgeRepGuide/
     │   └── ...
     └── ...                    (30 addons for TBC — all known factions)
-_quality_report.md             (report from the last --all run)
+_quality_report.md             (slim global summary, written by --all only)
 ```
 
 The folder prefix `Guidelime_<AUTHOR>_` matches GuideLime's sub-addon
@@ -332,8 +336,9 @@ guides_generator/
     report/                            # quality report
         aggregate.py    sections.py    writer.py
 addons/<expansion>/                    # generated addon directories
+                                       # each addon also has QUALITY_REPORT.md
 cache/<expansion>/                     # cached Questie DB files
-_quality_report.md                     # written by --all (maintainer-only)
+_quality_report.md                     # slim global summary, --all only
 ```
 
 Public entry points per package:
@@ -349,7 +354,7 @@ Public entry points per package:
 | `output` | `generate_guide`, `compute_efficiency_score`, `GuideEmitter` |
 | `addon` | `write_addon`, `read_changelog`, `addon_name_for_faction`, `guide_title_for_faction` |
 | `pipeline` | `run_single`, `run_all` |
-| `report` | `write_quality_report` |
+| `report` | `write_addon_report`, `write_global_report` |
 | `prompts` | `prompt_faction`, `prompt_expansion` |
 | `cli` | `main` |
 

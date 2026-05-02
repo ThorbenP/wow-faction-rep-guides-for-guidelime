@@ -408,6 +408,7 @@ the dropped ones.
 | Spawn anchor (lowest-level quest's pickup) for natural-tier sub-guides only | +0.2 | v1.2.0; cleanup buckets stay unanchored — anchoring them regressed dense-cluster sub-guides like Argent Dawn |
 | Or-opt refinement (segments of length 1..4) alternated with 2-opt | +0.5 | v1.3.0; the two heuristics unlock each other's moves |
 | Convergence-based early exit on the alternation loop | 0 effect on quality, ~30% runtime saved | v1.3.0; bails as soon as a full round leaves cost unchanged |
+| Two-phase sub-guide layout — natural-tier first, then cleanup | 0 effect on score (same content), UX clarity | v1.3.1; cleanup buckets stop being interleaved by quest level into the natural-tour sequence |
 
 ### What was dropped
 
@@ -421,6 +422,8 @@ the dropped ones.
 | followup-aware absorption (extra detour budget if quest's next stop is near target) | -0.0 to -1.0 depending on knobs | Absorption corridor too narrow for the signal to help; aggressive bonuses fragmented clusters |
 | `JUMP_PENALTY` tuning | -0.0 to +0.1 | Distance gain at low JP comes at the cost of more X-Jumps; not a clear win |
 | or-opt segment length k=5 | -0.0 (regresses vs k=4) | Longer segments are too rigid for precedence-bound chains |
+| unlocking-power tie-break (prefer candidates whose quest unlocks more downstream work) | 0.0 score, +0.5% distance, -2.1% jumps | Mixed; the precedence check already prevents bad orderings, the tie-break only shifts equally-valid picks |
+| multi-restart (build tour from 2-3 anchor candidates, keep cheapest) | -0.1 score, -1.2% distance, +50% runtime | Distance win is small and the runtime hit is real |
 
 If you have a new heuristic, by all means test it — but do the
 comparison properly with the diff snippet above, and check Argent Dawn

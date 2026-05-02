@@ -118,19 +118,42 @@ def _faction_side(faction_id: int) -> Optional[str]:
 
 
 def _sort_buckets(by_bucket: dict) -> list[tuple[int, str]]:
-    """Order sub-guides in the addon: natural-tier zones come in level
-    order; cleanup buckets and city-zones use the average quest level."""
+    """Order sub-guides in the addon as a two-phase tour:
+
+    1. **Natural-tier phase** — every zone where the player can do a
+       sub-guide on-level, sorted by zone level. City-hub zones (no tier
+       defined) fall in by their average quest level.
+    2. **Cleanup phase** — every off-tier `(zone, cleanup)` bucket,
+       sorted by average quest level too.
+
+    Splitting cleanup off avoids the layout where a high-level cleanup
+    bucket lands in the middle of the natural tour (`Darkshore Cleanup`
+    at level 31 sitting between `Hillsbrad` and `Desolace`). The player
+    works through all on-level zones first, then a clearly labelled
+    cleanup pass for off-tier returns.
+    """
     def avg_lvl(qs: list[dict]) -> float:
         lvls = [q['level'] for q in qs if q['level'] > 0]
         return sum(lvls) / len(lvls) if lvls else 99.0
 
-    def key_func(key: tuple[int, str]) -> tuple:
-        zone_id, bucket = key
-        qs = by_bucket[key]
+    def natural_key(key: tuple[int, str]) -> tuple:
+        zone_id, _ = key
         tier = get_zone_tier(zone_id)
-        if tier and bucket == 'natural':
-            return (tier[0], tier[1], zone_id, 0)
-        a = avg_lvl(qs)
-        return (a, a, zone_id, 1 if bucket == 'cleanup' else 0)
+        if tier:
+            return (tier[0], tier[1], zone_id)
+        # City-hub or unmapped zone — fall back to the average quest level.
+        a = avg_lvl(by_bucket[key])
+        return (a, a, zone_id)
 
-    return sorted(by_bucket.keys(), key=key_func)
+    def cleanup_key(key: tuple[int, str]) -> tuple:
+        zone_id, _ = key
+        a = avg_lvl(by_bucket[key])
+        return (a, a, zone_id)
+
+    natural = sorted(
+        (k for k in by_bucket if k[1] == 'natural'), key=natural_key,
+    )
+    cleanup = sorted(
+        (k for k in by_bucket if k[1] != 'natural'), key=cleanup_key,
+    )
+    return natural + cleanup

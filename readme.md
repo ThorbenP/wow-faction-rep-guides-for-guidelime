@@ -57,10 +57,10 @@ Each `.toc` carries the matching `## Interface` version
   tags — GuideLime hides non-matching steps at runtime, so the same addon
   serves every race/class on a side.
 - **Verb-led step bodies**: each step reads as a player instruction
-  ("Pick up [QA<id>]", "Kill [TAR<a>], [TAR<b>] for [QC<id>]", "Loot
-  for [QC<id>]", "Turn in [QT<id>] (+rep rep)", combined "Turn in ...,
-  pick up ..."). Tags carry only the ID; GuideLime resolves quest and
-  NPC names at runtime.
+  (`Pick up [QA<id>]`, `Kill [TAR<a>], [TAR<b>] for [QC<id>]`,
+  `Loot for [QC<id>]`, `Turn in [QT<id>] (+rep rep)`, combined
+  `Turn in [QT<id1>] (+rep), pick up [QA<id2>]`). Tags carry only the
+  ID; GuideLime resolves quest and NPC names at runtime.
 - **Quality reports**: every run writes a per-addon `QUALITY_REPORT.md`
   (snapshot, sub-guide breakdown, dropped quests) into the addon's own
   directory — so a single-faction `--faction` run produces the same
@@ -79,6 +79,7 @@ addons/
     │   ├── Guidelime_ThPi_DarnassusRepGuide.lua
     │   ├── CHANGELOG.md
     │   ├── README.md          (faction- and expansion-specific player readme)
+    │   ├── LICENSE            (GPL-3.0 text, copied from repo root)
     │   └── QUALITY_REPORT.md  (per-addon pathing metrics, written every run)
     ├── Guidelime_ThPi_IronforgeRepGuide/
     │   └── ...
@@ -450,3 +451,17 @@ output path or routing.
   living only there are dropped (the report calls these out as "Lost").
 - Era and TBC are supported. Wrath could be added analogously by adding
   a `Database/Wotlk/...` entry to `DB_FILES`.
+
+## License
+
+This project is licensed under the **GNU General Public License v3.0 or
+later** (GPL-3.0-or-later). The full license text lives in the
+[LICENSE](./LICENSE) file at the repo root, and a copy is dropped into
+every generated addon directory by `write_addon`, so each standalone
+upload (e.g. on CurseForge) ships GPL-§4-compliant on its own.
+
+GPL-3.0 was chosen so the generated sub-addons stay license-compatible
+with **GuideLime** (the parent addon, GPL-2.0-or-later). Anyone
+redistributing or modifying this generator or the addons it produces
+must keep them under GPL-3.0-or-later and make the corresponding source
+available.

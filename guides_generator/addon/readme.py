@@ -93,7 +93,9 @@ def build_readme(
         '',
         '## License',
         '',
-        'See the project repository for licensing terms.',
+        'Licensed under the **GNU General Public License v3.0 or later**',
+        '(GPL-3.0-or-later). See the bundled `LICENSE` file or',
+        '<https://www.gnu.org/licenses/gpl-3.0.html> for the full text.',
         '',
     ]
     return '\n'.join(lines)

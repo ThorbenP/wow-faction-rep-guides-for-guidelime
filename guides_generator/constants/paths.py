@@ -3,6 +3,7 @@
 CACHE_DIR = './cache'          # downloaded DBs live in `<CACHE_DIR>/<expansion>/`
 ADDONS_DIR = './addons'        # generated addons live in `<ADDONS_DIR>/<expansion>/`
 CHANGELOG_DIR = './changelog'  # version files in the form `vX.Y.Z[_<slug>].md`
+LICENSE_PATH = './LICENSE'     # GPL-3.0 license text, copied into every addon
 
 DEFAULT_EXPANSION_FOR_ALL = 'tbc'
 FALLBACK_VERSION = '0.0.0'     # used when the changelog directory is empty

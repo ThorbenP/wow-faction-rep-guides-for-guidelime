@@ -37,7 +37,8 @@ Each `.toc` carries the matching `## Interface` version
 
 ## Features
 
-- **Tour routing**: greedy nearest-feasible build, K=96 randomized
+- **Tour routing**: multi-anchor start (one tour per min-level pickup,
+  cheapest wins), greedy nearest-feasible build, K=96 randomized
   multistart rebuilds, then a deep refinement chain on the cheapest
   candidate (alternating 2-opt + or-opt to convergence, 3-opt for
   small tours, entry-level Held-Karp for tiny tours, stop-level 2-opt
@@ -223,10 +224,19 @@ normalised 0-100 per zone, but the actual zone size differs hugely
 in `constants.ZONE_CLUSTER_RADIUS` (up to 25). City- and medium-density
 zones use the default — empirically a smaller radius makes them worse.
 
-The greedy build is just the seed. Every sub-guide goes through
-**multistart** (`routing/multistart.py`) — K=96 randomized rebuilds
-plus an ILS escape — and the cheapest result is then run through
-the deep refinement chain (`routing/tour.py:refine_tour`):
+A natural-tier sub-guide first runs **multi-anchor start**
+(`routing/start.py:pick_start_candidates`): all distinct pickup coords
+of min-level quests are tried as the spawn anchor, one full
+multistart-and-refine pipeline per candidate, and the cheapest tour
+under `compute_tour_stats(tour, start_pos)` wins. Capped at 4
+candidates; most sub-guides only have 1-2. Cleanup-tier sub-guides
+have no spawn anchor and skip this search.
+
+The greedy build is just the seed. For each anchor candidate the
+sub-guide goes through **multistart** (`routing/multistart.py`) —
+K=96 randomized rebuilds plus an ILS escape — and the cheapest result
+is then run through the deep refinement chain
+(`routing/tour.py:refine_tour`):
 
 - **2-opt** (`routing/two_opt.py`) reverses every (i, j) segment
   that lowers the total cost without breaking precedence.
@@ -296,6 +306,7 @@ Routing constants are scattered across `guides_generator/routing/`:
 | `MAX_REFINE_ROUNDS` | `routing/tour.py` | 8 | upper bound on alternating 2-opt/or-opt rounds (early-exits on convergence) |
 | `THREE_OPT_MAX_ENTRIES` | `routing/tour.py` | 50 | tour-length cap for the 3-opt sweep (O(N³)) |
 | `MULTISTART_ITERATIONS` | `routing/multistart.py` | 96 | K, the number of randomized rebuilds per sub-guide |
+| `MAX_START_CANDIDATES` | `routing/start.py` | 4 | upper bound on min-level pickup coords tried as spawn anchor in `pick_start_candidates` |
 | `ILS_ROUNDS` | `routing/multistart.py` | 6 | random shake + re-refine rounds on the multistart winner |
 | `MAX_ENTRIES` | `routing/held_karp.py` | 12 | entry-level Held-Karp's O(N²·2^N) cap above which the entry-level DP is skipped |
 | `MAX_STOPS` | `routing/held_karp.py` | 30 | stop-level Held-Karp's cap; final pass that finds the provably-optimal stop ordering via precedence-pruned sparse DP |
@@ -398,7 +409,7 @@ Public entry points per package:
 | `quests` | `filter_quests_by_faction`, `expand_with_prereq_bridges`, `drop_unreachable_bridge_chains`, `attribute_complex_to_zones`, `decode_races`, `decode_classes` |
 | `coords` | `attach_coords`, `compute_objective_centroid`, `get_npc_coords` |
 | `zones` | `assign_primary_zone`, `is_self_contained`, `group_by_zone_and_tier`, `get_zone_tier` |
-| `routing` | `route_subguide`, `pick_start_position`, `compute_tour_stats`, `Stop`, `TourEntry` |
+| `routing` | `route_subguide`, `pick_start_position`, `pick_start_candidates`, `compute_tour_stats`, `Stop`, `TourEntry` |
 | `output` | `generate_guide`, `GuideEmitter` |
 | `addon` | `write_addon`, `zip_addon`, `read_changelog`, `addon_name_for_faction`, `guide_title_for_faction` |
 | `pipeline` | `run_single`, `run_all` |

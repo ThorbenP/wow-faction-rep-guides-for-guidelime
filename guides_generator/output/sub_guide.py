@@ -15,6 +15,7 @@ from ..constants import (
     AUTHOR, DEFAULT_CLUSTER_RADIUS, ZONE_CLUSTER_RADIUS, ZONE_MAP,
 )
 from ..routing import compute_tour_stats, pick_start_position, route_subguide
+from ..routing.start import pick_start_candidates
 from ..zones import get_zone_tier
 from .emitter import GuideEmitter
 from .sanitize import safe_text
@@ -61,10 +62,20 @@ def emit_sub_guide(
     # buckets are off-tier returns where the player drops in from anywhere,
     # so anchoring would just push the route through an arbitrary corner.
     cluster_radius = ZONE_CLUSTER_RADIUS.get(zone_id, DEFAULT_CLUSTER_RADIUS)
-    start_pos = pick_start_position(zone_quests) if bucket == 'natural' else None
-    tour, orphans = route_subguide(
-        zone_quests, start_pos=start_pos, cluster_radius=cluster_radius,
-    )
+    if bucket == 'natural':
+        # Multi-anchor: when several quests share the minimum level,
+        # building one tour per candidate and keeping the cheapest is
+        # essentially free relative to the multistart pipeline cost,
+        # and avoids the alphabetical tie-break baking in a suboptimal
+        # spawn point. Most natural-tier sub-guides have 1-3 candidates.
+        start_pos, tour, orphans = _pick_best_start(
+            zone_quests, cluster_radius,
+        )
+    else:
+        start_pos = None
+        tour, orphans = route_subguide(
+            zone_quests, start_pos=None, cluster_radius=cluster_radius,
+        )
     # Pass start_pos so the initial edge from spawn / pickup of the
     # lowest-level quest contributes to intra_zone_distance — otherwise
     # the report under-counts distance by the start-to-first-stop hop
@@ -193,6 +204,51 @@ def _emit_complex_section(
     pathing = compute_tour_stats(tour)
     emitter.emit_tour(tour, orphans)
     return {'orphans': len(orphans), 'pathing': pathing}
+
+
+def _pick_best_start(zone_quests, cluster_radius):
+    """Build a tour for each min-level pickup candidate and keep the
+    cheapest under `compute_tour_stats(tour, start_pos)`. Falls back to
+    the single-anchor build when the candidate list is empty (no quest
+    with both a usable pickup and a positive level).
+
+    Returns `(best_start_pos, best_tour, best_orphans)`.
+    """
+    candidates = pick_start_candidates(zone_quests)
+    if not candidates:
+        # Same code path as before — no min-level pickup to anchor on.
+        tour, orphans = route_subguide(
+            zone_quests, start_pos=None, cluster_radius=cluster_radius,
+        )
+        return None, tour, orphans
+
+    best_cost = float('inf')
+    best_start = None
+    best_tour: list = []
+    best_orphans: list = []
+    for start in candidates:
+        tour, orphans = route_subguide(
+            zone_quests, start_pos=start, cluster_radius=cluster_radius,
+        )
+        # Use the same cost the report will use, so the choice matches
+        # what we actually optimise for.
+        stats = compute_tour_stats(tour, start)
+        # `intra_zone_distance` is the headline metric. Cross-zone jumps
+        # are reported separately and contribute zero distance, so two
+        # candidates with identical intra-zone distance but different
+        # jump counts both look equally cheap here — fine, the optimiser
+        # already meets the player's tradeoff in `_tour_cost` via
+        # JUMP_PENALTY.
+        cost = stats['intra_zone_distance']
+        # Tie-break in favour of fewer orphans, then lower jump count.
+        key = (len(orphans), cost, stats['cross_zone_jumps'])
+        best_key = (len(best_orphans), best_cost, float('inf'))
+        if key < best_key:
+            best_cost = cost
+            best_start = start
+            best_tour = tour
+            best_orphans = orphans
+    return best_start, best_tour, best_orphans
 
 
 def level_range(quests: list[dict], zone_id: int, bucket: str) -> tuple[int, int]:

@@ -9,10 +9,10 @@ pathing breakdown) lives in each addon's `QUALITY_REPORT.md`.
 Headline KPIs for diff comparisons. Routing changes should push
 **rep/dist up** and **distance down**; everything else is diagnostic.
 
-- **Global Rep/Dist**: 16.63 rep / map unit — *the* quality metric, higher is better
-- **Total Distance (Normal)**: 38606 map units
+- **Global Rep/Dist**: 16.90 rep / map unit — *the* quality metric, higher is better
+- **Total Distance (Normal)**: 37969 map units
 - **Total Rep (Normal)**: 641838 — input-fixed, does not move with routing changes
-- **Total X-Jumps (Normal)**: 409 (diagnostic)
+- **Total X-Jumps (Normal)**: 414 (diagnostic)
 - **Absorption Rate (Normal)**: 60.6% (diagnostic)
 - **Lost Quests**: 49 (of 3987)
 - **Sub-Guides Total**: 289 across 30 factions
@@ -29,35 +29,35 @@ dropped quests, see the addon-specific `QUALITY_REPORT.md`.
 | Faction | Sub-Guides | Lost | N-Dist | N-Jumps | N-Absorp | N-Rep | **N-Rep/Dist** |
 |---|---:|---:|---:|---:|---:|---:|---:|
 | Keepers of Time | 2 | **3** | 14 | 0 | 100% | 12470 | **865.97** |
-| Ogri'la | 1 | 0 | 9 | 0 | 100% | 1930 | **207.53** |
+| Ogri'la | 1 | 0 | 8 | 0 | 100% | 1930 | **244.30** |
 | Netherwing | 2 | 0 | 271 | 2 | 68% | 53625 | **198.17** |
-| The Violet Eye | 1 | 0 | 37 | 0 | 94% | 6470 | **176.78** |
+| The Violet Eye | 1 | 0 | 36 | 0 | 94% | 6470 | **177.75** |
 | Argent Dawn | 1 | 0 | 42 | 0 | 99% | 4275 | **101.30** |
 | Brood of Nozdormu | 2 | 0 | 270 | 0 | 96% | 15660 | **58.00** |
-| Sha'tari Skyguard | 3 | 0 | 127 | 2 | 65% | 5520 | **43.36** |
-| The Mag'har | 3 | 0 | 320 | 3 | 49% | 13290 | **41.54** |
+| Sha'tari Skyguard | 3 | 0 | 126 | 2 | 58% | 5520 | **43.71** |
+| The Mag'har | 3 | 0 | 320 | 3 | 49% | 13290 | **41.56** |
 | Sporeggar | 1 | 0 | 327 | 0 | 62% | 12850 | **39.26** |
 | Cenarion Circle | 7 | 0 | 808 | 6 | 69% | 28670 | **35.50** |
-| Thrallmar | 4 | 0 | 320 | 1 | 59% | 10060 | **31.45** |
-| The Consortium | 5 | 0 | 726 | 0 | 67% | 22005 | **30.30** |
-| Kurenai | 2 | 0 | 570 | 0 | 53% | 17070 | **29.96** |
+| Thrallmar | 4 | 0 | 317 | 1 | 59% | 10060 | **31.74** |
+| Kurenai | 2 | 0 | 562 | 0 | 55% | 17070 | **30.40** |
+| The Consortium | 5 | 0 | 726 | 0 | 67% | 22005 | **30.32** |
 | Lower City | 3 | 0 | 387 | 6 | 54% | 9400 | **24.30** |
-| Cenarion Expedition | 9 | **1** | 881 | 12 | 66% | 19745 | **22.41** |
+| Cenarion Expedition | 9 | **1** | 859 | 12 | 66% | 19745 | **22.99** |
 | Honor Hold | 3 | **1** | 642 | 3 | 63% | 13610 | **21.19** |
 | Ravenholdt | 16 | 0 | 644 | 9 | 62% | 11370 | **17.65** |
-| The Scryers | 4 | 0 | 718 | 8 | 70% | 11355 | **15.81** |
-| Undercity | 22 | 0 | 2479 | 46 | 57% | 38190 | **15.41** |
-| The Aldor | 4 | 0 | 856 | 9 | 69% | 12870 | **15.04** |
-| Thunder Bluff | 20 | 0 | 2300 | 31 | 57% | 33530 | **14.58** |
-| Silvermoon City | 19 | **1** | 1836 | 21 | 58% | 26475 | **14.42** |
-| Orgrimmar | 21 | **20** | 3025 | 38 | 53% | 40480 | **13.38** |
-| Darnassus | 27 | 0 | 3778 | 50 | 59% | 47680 | **12.62** |
+| The Scryers | 4 | 0 | 648 | 9 | 71% | 11355 | **17.53** |
+| Undercity | 22 | 0 | 2456 | 46 | 57% | 38190 | **15.55** |
+| The Aldor | 4 | 0 | 854 | 9 | 69% | 12870 | **15.06** |
+| Thunder Bluff | 20 | 0 | 2298 | 31 | 57% | 33530 | **14.59** |
+| Silvermoon City | 19 | **1** | 1832 | 21 | 57% | 26475 | **14.45** |
+| Orgrimmar | 21 | **20** | 2970 | 38 | 54% | 40480 | **13.63** |
+| Darnassus | 27 | 0 | 3685 | 50 | 59% | 47680 | **12.94** |
 | Timbermaw Hold | 2 | 0 | 376 | 0 | 56% | 4300 | **11.43** |
-| Stormwind | 22 | **5** | 4051 | 50 | 57% | 45077 | **11.13** |
-| Darkspear Trolls | 21 | **1** | 2957 | 27 | 50% | 29755 | **10.06** |
-| Exodar | 18 | **2** | 3431 | 13 | 59% | 33960 | **9.90** |
-| Ironforge | 27 | **15** | 4248 | 46 | 59% | 41181 | **9.70** |
-| Gnomeregan | 17 | 0 | 2155 | 26 | 58% | 18965 | **8.80** |
+| Stormwind | 22 | **5** | 3979 | 51 | 57% | 45077 | **11.33** |
+| Exodar | 18 | **2** | 3347 | 14 | 59% | 33960 | **10.15** |
+| Darkspear Trolls | 21 | **1** | 2956 | 27 | 50% | 29755 | **10.07** |
+| Ironforge | 27 | **15** | 4174 | 47 | 59% | 41181 | **9.87** |
+| Gnomeregan | 17 | 0 | 2035 | 27 | 58% | 18965 | **9.32** |
 
 ## Top 20 Sub-Guides by Rep/Dist
 
@@ -72,10 +72,10 @@ dropped quests, see the addon-specific `QUALITY_REPORT.md`.
 | 7 | Keepers of Time | Tanaris (Cleanup) | **840.88** | 11520 | 14 |
 | 8 | Ironforge | Alterac Mountains | **480.00** | 3360 | 7 |
 | 9 | The Mag'har | Terokkar Forest | **253.33** | 1520 | 6 |
-| 10 | Ogri'la | Blade's Edge Mountains | **207.53** | 1930 | 9 |
+| 10 | Ogri'la | Blade's Edge Mountains | **244.30** | 1930 | 8 |
 | 11 | Netherwing | Shadowmoon Valley | **198.17** | 53625 | 271 |
 | 12 | Cenarion Circle | Moonglade | **188.68** | 3000 | 16 |
-| 13 | The Violet Eye | Deadwind Pass | **176.78** | 6470 | 37 |
+| 13 | The Violet Eye | Deadwind Pass | **177.75** | 6470 | 36 |
 | 14 | Silvermoon City | Azuremyst Isle | **160.71** | 225 | 1 |
 | 15 | Ravenholdt | Winterspring | **147.06** | 250 | 2 |
 | 16 | Orgrimmar | Badlands (Cleanup) | **140.85** | 1000 | 7 |

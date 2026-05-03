@@ -306,7 +306,8 @@ Routing constants are scattered across `guides_generator/routing/`:
 | `MAX_REFINE_ROUNDS` | `routing/tour.py` | 8 | upper bound on alternating 2-opt/or-opt rounds (early-exits on convergence) |
 | `THREE_OPT_MAX_ENTRIES` | `routing/tour.py` | 50 | tour-length cap for the 3-opt sweep (O(N³)) |
 | `MULTISTART_ITERATIONS` | `routing/multistart.py` | 96 | K, the number of randomized rebuilds per sub-guide |
-| `MAX_START_CANDIDATES` | `routing/start.py` | 4 | upper bound on min-level pickup coords tried as spawn anchor in `pick_start_candidates` |
+| `MAX_START_CANDIDATES` | `routing/start.py` | 6 | upper bound on pickup coords tried as spawn anchor in `pick_start_candidates` |
+| `LEVEL_TOLERANCE` | `routing/start.py` | 2 | how many levels above `min_level` still count as a candidate spawn anchor |
 | `ILS_ROUNDS` | `routing/multistart.py` | 6 | random shake + re-refine rounds on the multistart winner |
 | `MAX_ENTRIES` | `routing/held_karp.py` | 12 | entry-level Held-Karp's O(N²·2^N) cap above which the entry-level DP is skipped |
 | `MAX_STOPS` | `routing/held_karp.py` | 30 | stop-level Held-Karp's cap; final pass that finds the provably-optimal stop ordering via precedence-pruned sparse DP |

@@ -26,11 +26,21 @@ from __future__ import annotations
 
 from typing import Optional
 
-# Cap how many min-level pickups we try as start anchors. Above this
-# the per-sub-guide runtime cost (~k× the multistart pipeline) outweighs
-# the marginal distance gain: most sub-guides have at most 2-4 distinct
-# min-level pickup coords anyway.
-MAX_START_CANDIDATES = 4
+# Cap how many pickups we try as start anchors. Each candidate runs
+# its own multistart-and-refine pipeline, so per-sub-guide runtime
+# scales linearly with this cap. 6 is the empirical sweet spot — most
+# sub-guides have far fewer distinct candidates anyway, but city + hub
+# buckets occasionally surface 4-6 useful spawn anchors that pay off.
+MAX_START_CANDIDATES = 6
+
+# How many levels above min_level still count as a candidate. The
+# starter zone has several quests at the same minimum level by
+# definition, but a quest one or two levels up is sometimes a better
+# spawn anchor — it may be geographically outlying and visiting it
+# first amortises the trip across the whole cluster. 2 is empirically
+# the sweet spot; >2 starts diluting the candidate pool with quests
+# the player would not naturally pick first.
+LEVEL_TOLERANCE = 2
 
 
 def pick_start_position(
@@ -49,14 +59,15 @@ def pick_start_position(
 def pick_start_candidates(
     quests: list[dict], max_k: int = MAX_START_CANDIDATES,
 ) -> list[tuple[int, float, float]]:
-    """Up to `max_k` distinct pickup coords from quests sharing the
-    minimum level. Returns `[]` when no quest has a usable pickup +
-    positive level (same condition under which `pick_start_position`
-    returns None).
+    """Up to `max_k` distinct pickup coords drawn from the quests
+    within `LEVEL_TOLERANCE` levels of the minimum level. Returns `[]`
+    when no quest has a usable pickup + positive level (same condition
+    under which `pick_start_position` returns None).
 
     Distinct on coord, not on quest — multiple quests at the same NPC
-    collapse to one candidate. Order is by quest ID so the choice is
-    stable across runs.
+    collapse to one candidate. Sort key is `(level, quest_id)`, so
+    min-level pickups always come first and the tie-break is stable
+    across runs even when the input order shifts.
     """
     candidates = [
         q for q in quests
@@ -69,7 +80,7 @@ def pick_start_candidates(
     seen: set[tuple[int, float, float]] = set()
     out: list[tuple[int, float, float]] = []
     for q in candidates:
-        if q['level'] != min_level:
+        if q['level'] > min_level + LEVEL_TOLERANCE:
             break
         c = q['pickup_coords']
         if c in seen:

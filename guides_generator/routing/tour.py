@@ -34,7 +34,7 @@ from typing import Optional
 
 from .cluster import absorb_on_the_way, discover_cluster, nearest_feasible
 from .feasibility import build_predecessor_map, build_stop_list, mark_done
-from .held_karp import held_karp_pass
+from .held_karp import held_karp_pass, held_karp_stop_level_pass
 from .or_opt import or_opt_pass
 from .stop_2opt import stop_level_2opt
 from .stop_or_opt import stop_level_or_opt
@@ -169,6 +169,9 @@ def refine_tour(
     tour = held_karp_pass(tour, predecessors, start_pos)
     tour = stop_level_2opt(tour, predecessors, start_pos)
     tour = stop_level_or_opt(tour, predecessors, start_pos)
+    # Final exact pass: provably-optimal stop ordering for tours up to
+    # `held_karp.MAX_STOPS` (30). Anything larger is left untouched.
+    tour = held_karp_stop_level_pass(tour, predecessors, start_pos)
     return tour
 
 

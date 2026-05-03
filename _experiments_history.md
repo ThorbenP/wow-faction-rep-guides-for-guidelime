@@ -60,6 +60,13 @@ maintained.
 | `feat/combined-stop-level-finish` | multistart | 16.74 | +0.70 | 38341 | -4.2% | 7m50s | stop-level 2-opt finds moves 3-opt+HK miss. **adopted in v1.5.0** |
 | **`feat/stop-level-or-opt-finish`** | **multistart** | **16.78** | **+0.74** | **38251** | **-4.4%** | 8m7s | **promoted to main in v1.5.0** |
 
+## Post-v1.6.x experiments
+
+| Change | Rep/Dist | Notes |
+|---|---:|---|
+| stop-level Held-Karp DP for sub-guides ≤30 stops, plus `compute_tour_stats` `start_pos` reporting fix | 16.63 | adopted on `main`. The DP rebuilds the optimal stop ordering via precedence-pruned sparse bitmask states (typically a few hundred to a few thousand reachable states even at the cap). The reporting fix counts the spawn-to-first-stop edge that the previous `compute_tour_stats(tour)` call dropped — this *lowers* the reported global rep/dist by ~0.15 because all the previous numbers were missing one edge per sub-guide, while the DP raises it by recovering the true optimum on every bucket up to 30 stops. Net 16.78 → 16.63. The number is smaller; the underlying tours are at least as short and provably-optimal where the cap fires. |
+| OR-Tools CP-SAT refinement (off-tree experiment) | n/a | external solver gave +1–4% on sub-guides >30 stops via a hint = existing tour, but only as `FEASIBLE` within a 20-min time budget per bucket. Not worth the extra dependency + ~17h `--all` runtime for the small marginal gain — the heuristic chain is already close to the bound. Kept as a documented option, not in production. |
+
 ## Key findings under rep/dist
 
 1. **Total rep is fixed by the input**, so `rep/dist = const/dist`.

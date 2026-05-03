@@ -26,33 +26,6 @@ python3 create.py --faction 69
 python3 create.py --all      # all 30 factions in one run, default TBC
 ```
 
-### Optimum-pathing solver (experimental)
-
-The standard `create.py` ships heuristic routes (greedy + 2-opt + or-opt + 3-opt
-+ Held-Karp on tiny tours). For exact-optimum pathing on a single sub-guide,
-`enumerate_pathing.py` provides three back-ends:
-
-```bash
-# venv with extra solver dependency (one-off)
-python3 -m venv .venv
-.venv/bin/pip install slpp ortools
-
-# Held-Karp DP (default, exact, fast up to ~30 stops)
-.venv/bin/python enumerate_pathing.py --faction "lower city" --zone "Shattrath City" --tier natural
-
-# OR-Tools CP-SAT (for larger sub-guides; may return FEASIBLE if budget runs out)
-.venv/bin/python enumerate_pathing.py --faction "sporeggar" --zone "Zangarmarsh" --tier natural --mode ortools --time-limit 1800
-
-# Brute-force enumeration (verification ground truth, only practical to ~16 stops)
-.venv/bin/python enumerate_pathing.py --faction ravenholdt --zone Stonetalon --tier natural --mode brute
-
-# List sub-guides for a faction with stop counts
-.venv/bin/python enumerate_pathing.py --faction "lower city" --list
-```
-
-Cross-validation across the three solvers and a comparison against the
-existing pipeline lives in `experiments/optimum-pathing.md`.
-
 Generated addons are written to `./addons/<expansion>/`
 (e.g. `./addons/tbc/` for TBC Anniversary / Burning Crusade Classic).
 Copy each folder you want to use into your WoW `Interface/AddOns/`
@@ -67,9 +40,11 @@ Each `.toc` carries the matching `## Interface` version
 - **Tour routing**: greedy nearest-feasible build, K=96 randomized
   multistart rebuilds, then a deep refinement chain on the cheapest
   candidate (alternating 2-opt + or-opt to convergence, 3-opt for
-  small tours, Held-Karp DP for tiny tours, stop-level 2-opt and
-  or-opt finishers that can break clusters when shorter routes
-  exist). All quests' precedence (`pre`, `preg`, `next`) is
+  small tours, entry-level Held-Karp for tiny tours, stop-level 2-opt
+  and or-opt that can break clusters when shorter routes exist, and a
+  final stop-level Held-Karp DP that finds the provably-optimal stop
+  ordering for sub-guides up to 30 stops via precedence-pruned sparse
+  bitmask DP). All quests' precedence (`pre`, `preg`, `next`) is
   respected. Multistart candidates are evaluated in parallel across
   all available CPU cores; single-faction runs cost a few seconds,
   `--all` takes ~2.5 minutes on a 12-thread host. See
@@ -216,7 +191,11 @@ brackets — those would parse as another tag):
 7. **Routing** — per sub-guide, run the multistart pipeline:
    K=96 randomized rebuilds, cost-aligned acceptance, ILS escape,
    then the deep refinement chain (2-opt + or-opt + 3-opt + defrag +
-   Held-Karp + stop-level 2-opt + stop-level or-opt) on the winner.
+   entry-level Held-Karp + stop-level 2-opt + stop-level or-opt +
+   stop-level Held-Karp DP) on the winner. The final stop-level
+   Held-Karp finds the provably-optimal stop ordering for sub-guides
+   up to 30 stops via precedence-pruned sparse bitmask DP — anything
+   larger is left to the heuristic chain.
    See `routing/tour.py` for the orchestrator and
    `_experiments_history.md` for the trail that picked the chain.
 8. **Emit** — write `<addon>.toc`, `<addon>.lua`, the per-addon
@@ -261,14 +240,23 @@ the deep refinement chain (`routing/tour.py:refine_tour`):
 - **Defragmentation** merges same-coord adjacencies into one cluster
   entry. Cosmetic under rep/dist (visit order unchanged), but it
   keeps the emitted Lua tighter.
-- **Held-Karp DP** (`routing/held_karp.py`) for tours with ≤12
-  entries — provably-optimal entry permutation under precedence.
+- **Entry-level Held-Karp DP** (`routing/held_karp.py:held_karp_pass`)
+  for tours with ≤12 entries — provably-optimal entry permutation under
+  precedence, with clusters kept atomic.
 - **Stop-level 2-opt** (`routing/stop_2opt.py`) and **stop-level
   or-opt** (`routing/stop_or_opt.py`) finishers run on the
   flattened stop sequence, then re-cluster. They can pull a single
   stop out of its discovery-time cluster when a different position
   is geometrically cheaper — moves the entry-level passes cannot
   reach because they treat clusters as atomic.
+- **Stop-level Held-Karp DP** (`routing/held_karp.py:held_karp_stop_level_pass`)
+  for tours whose flattened stop count is ≤ `MAX_STOPS` (30). Same
+  bitmask DP as the entry-level pass but applied to the stop sequence
+  with a sparse dict over reachable states — precedence pruning keeps
+  the state count tractable up to 30 stops in well under a second.
+  Final pass: when it fires the result is the provably-optimal stop
+  ordering under the cost model, strictly at least as good as anything
+  the heuristic chain found.
 
 Each pass unlocks moves the others cannot reach. The cost function
 shared by all of them penalises cross-zone jumps with
@@ -309,7 +297,8 @@ Routing constants are scattered across `guides_generator/routing/`:
 | `THREE_OPT_MAX_ENTRIES` | `routing/tour.py` | 50 | tour-length cap for the 3-opt sweep (O(N³)) |
 | `MULTISTART_ITERATIONS` | `routing/multistart.py` | 96 | K, the number of randomized rebuilds per sub-guide |
 | `ILS_ROUNDS` | `routing/multistart.py` | 6 | random shake + re-refine rounds on the multistart winner |
-| `MAX_ENTRIES` | `routing/held_karp.py` | 12 | Held-Karp's O(N²·2^N) cap above which the DP is skipped |
+| `MAX_ENTRIES` | `routing/held_karp.py` | 12 | entry-level Held-Karp's O(N²·2^N) cap above which the entry-level DP is skipped |
+| `MAX_STOPS` | `routing/held_karp.py` | 30 | stop-level Held-Karp's cap; final pass that finds the provably-optimal stop ordering via precedence-pruned sparse DP |
 | `JUMP_PENALTY` | `routing/two_opt.py` | 45.0 | cost of one cross-zone jump (in map units), shared across every routing pass |
 | `MAX_PASSES` | `routing/two_opt.py` | 3 | max improving 2-opt swaps per outer round |
 | `MAX_PASSES` | `routing/or_opt.py` | 3 | max improving or-opt relocations per outer round |

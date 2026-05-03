@@ -65,7 +65,11 @@ def emit_sub_guide(
     tour, orphans = route_subguide(
         zone_quests, start_pos=start_pos, cluster_radius=cluster_radius,
     )
-    normal_pathing = compute_tour_stats(tour)
+    # Pass start_pos so the initial edge from spawn / pickup of the
+    # lowest-level quest contributes to intra_zone_distance — otherwise
+    # the report under-counts distance by the start-to-first-stop hop
+    # and inflates rep/dist correspondingly.
+    normal_pathing = compute_tour_stats(tour, start_pos)
     rep_per_dist = (
         zone_rep / normal_pathing['intra_zone_distance']
         if normal_pathing['intra_zone_distance'] > 0 else 0.0

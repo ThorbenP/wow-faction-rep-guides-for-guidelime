@@ -9,16 +9,16 @@ pathing breakdown) lives in each addon's `QUALITY_REPORT.md`.
 Headline KPIs for diff comparisons. Routing changes should push
 **rep/dist up** and **distance down**; everything else is diagnostic.
 
-- **Global Rep/Dist**: 16.79 rep / map unit — *the* quality metric, higher is better
-- **Total Distance (Normal)**: 38236 map units
+- **Global Rep/Dist**: 16.63 rep / map unit — *the* quality metric, higher is better
+- **Total Distance (Normal)**: 38606 map units
 - **Total Rep (Normal)**: 641838 — input-fixed, does not move with routing changes
 - **Total X-Jumps (Normal)**: 409 (diagnostic)
-- **Absorption Rate (Normal)**: 60.7% (diagnostic)
+- **Absorption Rate (Normal)**: 60.6% (diagnostic)
 - **Lost Quests**: 49 (of 3987)
 - **Sub-Guides Total**: 289 across 30 factions
 
 ### Complex section (info only, not part of the headline metric)
-- distance: 11035 | x-jumps: 550 | rep: 123114
+- distance: 10988 | x-jumps: 551 | rep: 123114
 
 ## Faction Comparison
 
@@ -37,27 +37,27 @@ dropped quests, see the addon-specific `QUALITY_REPORT.md`.
 | Sha'tari Skyguard | 3 | 0 | 127 | 2 | 65% | 5520 | **43.36** |
 | The Mag'har | 3 | 0 | 320 | 3 | 49% | 13290 | **41.54** |
 | Sporeggar | 1 | 0 | 327 | 0 | 62% | 12850 | **39.26** |
-| Cenarion Circle | 7 | 0 | 805 | 6 | 69% | 28670 | **35.63** |
-| Thrallmar | 4 | 0 | 317 | 1 | 59% | 10060 | **31.74** |
-| The Consortium | 5 | 0 | 726 | 0 | 67% | 22005 | **30.29** |
-| Kurenai | 2 | 0 | 570 | 0 | 53% | 17070 | **29.94** |
-| Lower City | 3 | 0 | 388 | 6 | 58% | 9400 | **24.26** |
-| Cenarion Expedition | 9 | **1** | 882 | 12 | 66% | 19745 | **22.40** |
-| Honor Hold | 3 | **1** | 638 | 3 | 63% | 13610 | **21.35** |
-| Ravenholdt | 16 | 0 | 621 | 9 | 62% | 11370 | **18.30** |
+| Cenarion Circle | 7 | 0 | 808 | 6 | 69% | 28670 | **35.50** |
+| Thrallmar | 4 | 0 | 320 | 1 | 59% | 10060 | **31.45** |
+| The Consortium | 5 | 0 | 726 | 0 | 67% | 22005 | **30.30** |
+| Kurenai | 2 | 0 | 570 | 0 | 53% | 17070 | **29.96** |
+| Lower City | 3 | 0 | 387 | 6 | 54% | 9400 | **24.30** |
+| Cenarion Expedition | 9 | **1** | 881 | 12 | 66% | 19745 | **22.41** |
+| Honor Hold | 3 | **1** | 642 | 3 | 63% | 13610 | **21.19** |
+| Ravenholdt | 16 | 0 | 644 | 9 | 62% | 11370 | **17.65** |
 | The Scryers | 4 | 0 | 718 | 8 | 70% | 11355 | **15.81** |
 | Undercity | 22 | 0 | 2479 | 46 | 57% | 38190 | **15.41** |
 | The Aldor | 4 | 0 | 856 | 9 | 69% | 12870 | **15.04** |
 | Thunder Bluff | 20 | 0 | 2300 | 31 | 57% | 33530 | **14.58** |
-| Silvermoon City | 19 | **1** | 1820 | 21 | 58% | 26475 | **14.55** |
-| Orgrimmar | 21 | **20** | 3025 | 38 | 54% | 40480 | **13.38** |
-| Darnassus | 27 | 0 | 3640 | 50 | 59% | 47680 | **13.10** |
-| Timbermaw Hold | 2 | 0 | 377 | 0 | 52% | 4300 | **11.41** |
-| Stormwind | 22 | **5** | 4052 | 50 | 57% | 45077 | **11.12** |
-| Darkspear Trolls | 21 | **1** | 2960 | 27 | 51% | 29755 | **10.05** |
-| Exodar | 18 | **2** | 3381 | 13 | 59% | 33960 | **10.05** |
-| Ironforge | 27 | **15** | 4197 | 46 | 59% | 41181 | **9.81** |
-| Gnomeregan | 17 | 0 | 2069 | 26 | 58% | 18965 | **9.17** |
+| Silvermoon City | 19 | **1** | 1836 | 21 | 58% | 26475 | **14.42** |
+| Orgrimmar | 21 | **20** | 3025 | 38 | 53% | 40480 | **13.38** |
+| Darnassus | 27 | 0 | 3778 | 50 | 59% | 47680 | **12.62** |
+| Timbermaw Hold | 2 | 0 | 376 | 0 | 56% | 4300 | **11.43** |
+| Stormwind | 22 | **5** | 4051 | 50 | 57% | 45077 | **11.13** |
+| Darkspear Trolls | 21 | **1** | 2957 | 27 | 50% | 29755 | **10.06** |
+| Exodar | 18 | **2** | 3431 | 13 | 59% | 33960 | **9.90** |
+| Ironforge | 27 | **15** | 4248 | 46 | 59% | 41181 | **9.70** |
+| Gnomeregan | 17 | 0 | 2155 | 26 | 58% | 18965 | **8.80** |
 
 ## Top 20 Sub-Guides by Rep/Dist
 

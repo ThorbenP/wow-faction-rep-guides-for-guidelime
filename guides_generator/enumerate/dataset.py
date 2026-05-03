@@ -12,6 +12,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Optional
 
+import math
+
 from ..constants import ZONE_MAP
 from ..coords import attach_coords
 from ..pipeline.loader import load_and_filter_quests, load_world_dbs
@@ -89,6 +91,87 @@ def load_subguide(
             f'in zone {zone_id} ({ZONE_MAP.get(zone_id, "?")}) tier "{tier}"'
         )
     return _build_subguide(faction_id, faction_name, expansion, zone_id, tier, qs)
+
+
+def build_distance_matrix(sg: SubGuide) -> list[list[float]]:
+    """Pairwise stop-to-stop distance, zone-aware (cross-zone = 0)."""
+    n = len(sg.stops)
+    coords = [s.coord for s in sg.stops]
+    mat = [[0.0] * n for _ in range(n)]
+    for i in range(n):
+        zi, xi, yi = coords[i]
+        for j in range(n):
+            if i == j:
+                continue
+            zj, xj, yj = coords[j]
+            if zi != zj:
+                mat[i][j] = 0.0
+            else:
+                mat[i][j] = math.hypot(xi - xj, yi - yj)
+    return mat
+
+
+def distances_from_start(sg: SubGuide) -> list[float]:
+    """Distance from `sg.start_pos` to each stop (zone-aware, cross-zone = 0)."""
+    n = len(sg.stops)
+    if sg.start_pos is None:
+        return [0.0] * n
+    sz, sx, sy = sg.start_pos
+    out: list[float] = []
+    for s in sg.stops:
+        zi, xi, yi = s.coord
+        if zi != sz:
+            out.append(0.0)
+        else:
+            out.append(math.hypot(sx - xi, sy - yi))
+    return out
+
+
+def build_stop_predecessor_masks(sg: SubGuide) -> list[int]:
+    """Per stop, the bitmask of stop indices that must be visited first.
+
+    Translates routing.feasibility precedence (which is per quest_id and
+    by stop type) into a stop-index bitmask:
+        QA: every QT stop of every quest in `predecessors[qid]`
+        QC: the QA stop of the same quest, if a QA stop exists
+        QT: the QA stop and (if present) QC stop of the same quest
+
+    Item-drop bridge quests have no QA stop — their dependents pick up the
+    predecessor's QT directly through the QT chain (a QT stop only depends
+    on the same quest's QA/QC, never on another quest's QT).
+    """
+    n = len(sg.stops)
+    qa_idx_for: dict[int, int] = {}
+    qc_idx_for: dict[int, int] = {}
+    qt_idx_for: dict[int, int] = {}
+    for i, s in enumerate(sg.stops):
+        if s.type == 'QA':
+            qa_idx_for[s.quest_id] = i
+        elif s.type == 'QC':
+            qc_idx_for[s.quest_id] = i
+        elif s.type == 'QT':
+            qt_idx_for[s.quest_id] = i
+
+    pred_mask: list[int] = [0] * n
+    for i, s in enumerate(sg.stops):
+        qid = s.quest_id
+        if s.type == 'QA':
+            for pid in sg.predecessors.get(qid, ()):
+                qt = qt_idx_for.get(pid)
+                if qt is not None:
+                    pred_mask[i] |= 1 << qt
+        elif s.type == 'QC':
+            qa = qa_idx_for.get(qid)
+            if qa is not None:
+                pred_mask[i] |= 1 << qa
+        elif s.type == 'QT':
+            qa = qa_idx_for.get(qid)
+            if qa is not None:
+                pred_mask[i] |= 1 << qa
+            qc = qc_idx_for.get(qid)
+            if qc is not None:
+                pred_mask[i] |= 1 << qc
+    return pred_mask
 
 
 def _build_subguide(

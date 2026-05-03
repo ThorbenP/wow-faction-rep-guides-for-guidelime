@@ -26,6 +26,33 @@ python3 create.py --faction 69
 python3 create.py --all      # all 30 factions in one run, default TBC
 ```
 
+### Optimum-pathing solver (experimental)
+
+The standard `create.py` ships heuristic routes (greedy + 2-opt + or-opt + 3-opt
++ Held-Karp on tiny tours). For exact-optimum pathing on a single sub-guide,
+`enumerate_pathing.py` provides three back-ends:
+
+```bash
+# venv with extra solver dependency (one-off)
+python3 -m venv .venv
+.venv/bin/pip install slpp ortools
+
+# Held-Karp DP (default, exact, fast up to ~30 stops)
+.venv/bin/python enumerate_pathing.py --faction "lower city" --zone "Shattrath City" --tier natural
+
+# OR-Tools CP-SAT (for larger sub-guides; may return FEASIBLE if budget runs out)
+.venv/bin/python enumerate_pathing.py --faction "sporeggar" --zone "Zangarmarsh" --tier natural --mode ortools --time-limit 1800
+
+# Brute-force enumeration (verification ground truth, only practical to ~16 stops)
+.venv/bin/python enumerate_pathing.py --faction ravenholdt --zone Stonetalon --tier natural --mode brute
+
+# List sub-guides for a faction with stop counts
+.venv/bin/python enumerate_pathing.py --faction "lower city" --list
+```
+
+Cross-validation across the three solvers and a comparison against the
+existing pipeline lives in `experiments/optimum-pathing.md`.
+
 Generated addons are written to `./addons/<expansion>/`
 (e.g. `./addons/tbc/` for TBC Anniversary / Burning Crusade Classic).
 Copy each folder you want to use into your WoW `Interface/AddOns/`

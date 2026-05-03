@@ -11,5 +11,10 @@ sub-guides only; the existing pipeline remains the practical solver.
 """
 from .dataset import SubGuide, list_subguides, load_subguide
 from .dfs import enumerate_subguide
+from .heldkarp import solve_heldkarp
+from .ortools_solver import solve_ortools
 
-__all__ = ['SubGuide', 'enumerate_subguide', 'list_subguides', 'load_subguide']
+__all__ = [
+    'SubGuide', 'enumerate_subguide', 'list_subguides', 'load_subguide',
+    'solve_heldkarp', 'solve_ortools',
+]

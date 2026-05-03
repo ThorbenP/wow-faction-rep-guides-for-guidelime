@@ -1,0 +1,260 @@
+{
+  "started_at": "2026-05-03T11:16:05",
+  "cases": [
+    {
+      "label": "small-12",
+      "faction": "Ravenholdt",
+      "zone": "Stonetalon Mountains",
+      "tier": "natural",
+      "n_stops": 12,
+      "n_quests": 5,
+      "total_quest_rep": 1075,
+      "reachable_rep": 1075,
+      "existing_pipeline": {
+        "rep_per_dist": 18.79,
+        "distance": 57.0,
+        "rep": 1075
+      },
+      "methods": {
+        "heldkarp": {
+          "status": "OPTIMAL",
+          "rep": 1075,
+          "distance": 57.24070874015737,
+          "rep_per_dist": 18.78034048949207,
+          "elapsed_sec": 0.00035727201611734927,
+          "states_visited": 283
+        },
+        "ortools": {
+          "status": "OPTIMAL",
+          "rep": 1075,
+          "distance": 57.2407,
+          "rep_per_dist": 18.780343357086828,
+          "elapsed_sec": 0.04522941299364902,
+          "best_bound": 57.2407
+        },
+        "brute": {
+          "status": "OPTIMAL",
+          "rep": 1075,
+          "distance": 57.2407,
+          "rep_per_dist": 18.78034,
+          "elapsed_sec": 0.08727911399910226,
+          "permutations": 27720
+        }
+      }
+    },
+    {
+      "label": "mid-16",
+      "faction": "Ogri'la",
+      "zone": "Blade's Edge Mountains",
+      "tier": "natural",
+      "n_stops": 16,
+      "n_quests": 8,
+      "total_quest_rep": 1930,
+      "reachable_rep": 1930,
+      "existing_pipeline": {
+        "rep_per_dist": 207.53,
+        "distance": 9.0,
+        "rep": 1930
+      },
+      "methods": {
+        "heldkarp": {
+          "status": "OPTIMAL",
+          "rep": 1930,
+          "distance": 9.267347101779322,
+          "rep_per_dist": 208.25808926801088,
+          "elapsed_sec": 0.002465366997057572,
+          "states_visited": 1964
+        },
+        "ortools": {
+          "status": "OPTIMAL",
+          "rep": 1930,
+          "distance": 9.2672,
+          "rep_per_dist": 208.2613950276243,
+          "elapsed_sec": 0.03001821000361815,
+          "best_bound": 9.2672
+        },
+        "brute": {
+          "status": "SKIPPED",
+          "reason": "N=16 > 14"
+        }
+      }
+    },
+    {
+      "label": "mid-21",
+      "faction": "Timbermaw Hold",
+      "zone": "Felwood",
+      "tier": "natural",
+      "n_stops": 21,
+      "n_quests": 8,
+      "total_quest_rep": 3450,
+      "reachable_rep": 3450,
+      "existing_pipeline": {
+        "rep_per_dist": 12.38,
+        "distance": 279.0,
+        "rep": 3450
+      },
+      "methods": {
+        "heldkarp": {
+          "status": "OPTIMAL",
+          "rep": 3450,
+          "distance": 277.898894240464,
+          "rep_per_dist": 12.414587000892269,
+          "elapsed_sec": 0.022902241995325312,
+          "states_visited": 16149
+        },
+        "ortools": {
+          "status": "OPTIMAL",
+          "rep": 3450,
+          "distance": 277.8988,
+          "rep_per_dist": 12.414591210901234,
+          "elapsed_sec": 12.295792920980603,
+          "best_bound": 277.8988
+        },
+        "brute": {
+          "status": "SKIPPED",
+          "reason": "N=21 > 14"
+        }
+      }
+    },
+    {
+      "label": "mid-26",
+      "faction": "The Consortium",
+      "zone": "Nagrand",
+      "tier": "natural",
+      "n_stops": 26,
+      "n_quests": 9,
+      "total_quest_rep": 2010,
+      "reachable_rep": 2010,
+      "existing_pipeline": {
+        "rep_per_dist": 8.01,
+        "distance": 251.0,
+        "rep": 2010
+      },
+      "methods": {
+        "heldkarp": {
+          "status": "OPTIMAL",
+          "rep": 2010,
+          "distance": 250.12884461095376,
+          "rep_per_dist": 8.035858491755802,
+          "elapsed_sec": 0.14120882001589052,
+          "states_visited": 78002
+        },
+        "ortools": {
+          "status": "OPTIMAL",
+          "rep": 2010,
+          "distance": 250.1286,
+          "rep_per_dist": 8.03586635034938,
+          "elapsed_sec": 8.678763958014315,
+          "best_bound": 250.1286
+        },
+        "brute": {
+          "status": "SKIPPED",
+          "reason": "N=26 > 14"
+        }
+      }
+    },
+    {
+      "label": "mid-29",
+      "faction": "Lower City",
+      "zone": "Shattrath City",
+      "tier": "natural",
+      "n_stops": 29,
+      "n_quests": 13,
+      "total_quest_rep": 3525,
+      "reachable_rep": 3525,
+      "existing_pipeline": {
+        "rep_per_dist": 21.73,
+        "distance": 162.0,
+        "rep": 3525
+      },
+      "methods": {
+        "heldkarp": {
+          "status": "OPTIMAL",
+          "rep": 3525,
+          "distance": 38.33676841318957,
+          "rep_per_dist": 91.94828218194942,
+          "elapsed_sec": 20.21898018900538,
+          "states_visited": 5589961
+        },
+        "ortools": {
+          "status": "OPTIMAL",
+          "rep": 3525,
+          "distance": 38.3369,
+          "rep_per_dist": 91.94796658050078,
+          "elapsed_sec": 422.2569031549792,
+          "best_bound": 38.3369
+        },
+        "brute": {
+          "status": "SKIPPED",
+          "reason": "N=29 > 14"
+        }
+      }
+    },
+    {
+      "label": "large-42",
+      "faction": "Sporeggar",
+      "zone": "Zangarmarsh",
+      "tier": "natural",
+      "n_stops": 42,
+      "n_quests": 16,
+      "total_quest_rep": 12850,
+      "reachable_rep": 12850,
+      "existing_pipeline": {
+        "rep_per_dist": 39.26,
+        "distance": 327.0,
+        "rep": 12850
+      },
+      "methods": {
+        "heldkarp": {
+          "status": "SKIPPED",
+          "reason": "N=42 > 32"
+        },
+        "ortools": {
+          "status": "FEASIBLE",
+          "rep": 12850,
+          "distance": 322.1965,
+          "rep_per_dist": 39.88249406806095,
+          "elapsed_sec": 600.0804264599865,
+          "best_bound": 276.4315
+        },
+        "brute": {
+          "status": "SKIPPED",
+          "reason": "N=42 > 14"
+        }
+      }
+    },
+    {
+      "label": "xl-46",
+      "faction": "The Consortium",
+      "zone": "Shattrath City",
+      "tier": "natural",
+      "n_stops": 46,
+      "n_quests": 23,
+      "total_quest_rep": 7250,
+      "reachable_rep": 7250,
+      "existing_pipeline": {
+        "rep_per_dist": 10357.14,
+        "distance": 1.0,
+        "rep": 7250
+      },
+      "methods": {
+        "heldkarp": {
+          "status": "SKIPPED",
+          "reason": "N=46 > 32"
+        },
+        "ortools": {
+          "status": "OPTIMAL",
+          "rep": 7250,
+          "distance": 0.6964,
+          "rep_per_dist": 10410.683515221137,
+          "elapsed_sec": 2.3450717700179666,
+          "best_bound": 0.6964
+        },
+        "brute": {
+          "status": "SKIPPED",
+          "reason": "N=46 > 14"
+        }
+      }
+    }
+  ]
+}

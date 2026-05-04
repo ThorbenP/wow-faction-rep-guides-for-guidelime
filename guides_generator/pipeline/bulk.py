@@ -3,8 +3,11 @@ from __future__ import annotations
 
 import os
 
-from ..addon import read_changelog, zip_addon
-from ..constants import ADDONS_DIR, CHANGELOG_DIR, DIST_DIR, FACTION_NAMES
+from ..addon import (
+    build_bundle_readme, read_changelog, write_curseforge_description,
+    zip_addon_bundle,
+)
+from ..constants import ADDONS_DIR, CHANGELOG_DIR, FACTION_NAMES
 from ..coords import attach_coords
 from ..quests import (
     drop_unreachable_bridge_chains, expand_with_prereq_bridges,
@@ -27,6 +30,7 @@ def run_all(expansion: str) -> None:
     version, changelog_text = read_changelog(CHANGELOG_DIR)
     print(f'\n[C/D] filter and write per faction (v{version})...')
     results: list[tuple[str, int, str | None, int, dict | None]] = []
+    addon_paths: list[str] = []
     addons_top = os.path.abspath(ADDONS_DIR)            # parent dir, for report path
     addons_root = os.path.join(addons_top, expansion)   # actual write target
     os.makedirs(addons_root, exist_ok=True)
@@ -51,7 +55,7 @@ def run_all(expansion: str) -> None:
         write_addon_report(
             stats, addon_path, fname, faction_id, version, expansion,
         )
-        zip_addon(addon_path, expansion)
+        addon_paths.append(addon_path)
         n_total = len(quests) + len(complex_quests)
         n_dropped = stats['totals']['dropped_no_zone']
         flag = f' (! {n_dropped} without zone)' if n_dropped else ''
@@ -63,4 +67,12 @@ def run_all(expansion: str) -> None:
     global_path = write_global_report(results, addons_top, version, expansion)
     if global_path:
         print(f'global summary: {global_path}')
-    print(f'zipped addons: {os.path.join(os.path.abspath(DIST_DIR), expansion)}')
+
+    if addon_paths:
+        bundle_readme = build_bundle_readme(expansion, version)
+        zip_path = zip_addon_bundle(
+            addon_paths, expansion, version, bundle_readme=bundle_readme,
+        )
+        cf_path = write_curseforge_description(expansion, version)
+        print(f'bundle archive: {zip_path}')
+        print(f'curseforge description: {cf_path}')

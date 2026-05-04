@@ -89,15 +89,27 @@ addons/
     └── ...                    (30 addons for TBC — all known factions)
 _quality_report.md             (slim global summary, written by --all only)
 dist/
-└── tbc/                       (CurseForge-ready zips, one per addon)
-    ├── Guidelime_ThPi_DarnassusRepGuide.zip   (CHANGELOG, README, LICENSE,
-    │                                           .toc, .lua — no QUALITY_REPORT)
-    └── ...                    (built automatically by --all)
+└── tbc/
+    ├── Guidelime_ThPi_RepGuides-tbc-v<version>.zip   (one umbrella bundle:
+    │                                                  every faction folder
+    │                                                  at the zip root +
+    │                                                  a top-level README.md;
+    │                                                  no QUALITY_REPORT.md)
+    └── CURSEFORGE_DESCRIPTION.md                     (paste-ready markdown
+                                                       for the CurseForge
+                                                       project page)
 ```
 
-The folder prefix `Guidelime_<AUTHOR>_` matches GuideLime's sub-addon
-convention (e.g. `Guidelime_Sage`); it groups all your generated addons
-together in the addon list. The author tag is `guides_generator.constants.AUTHOR`.
+CurseForge moderation rejects multiple similar projects from the same
+author under the [Fair Play rule](https://support.curseforge.com/en/support/solutions/articles/9000197279),
+so `--all` produces a single umbrella bundle rather than one zip per
+faction. Inside the bundle every top-level folder is still a
+self-contained addon — the convention used by WeakAuras, Bagnon and
+Bartender — so a player extracts the zip into `Interface/AddOns/` once
+and then enables only the factions they actually farm. The folder
+prefix `Guidelime_<AUTHOR>_` matches GuideLime's sub-addon convention
+(e.g. `Guidelime_Sage`); it groups all your generated addons together
+in the addon list. The author tag is `guides_generator.constants.AUTHOR`.
 
 ## Generated guide structure
 
@@ -201,9 +213,13 @@ brackets — those would parse as another tag):
    `_experiments_history.md` for the trail that picked the chain.
 8. **Emit** — write `<addon>.toc`, `<addon>.lua`, the per-addon
    `CHANGELOG.md`, `README.md` and `LICENSE`.
-9. **Zip** (`--all` only) — bundle the addon directory into
-   `dist/<expansion>/<addon>.zip` so the run produces ready-to-upload
-   archives. `QUALITY_REPORT.md` is excluded from the zip.
+9. **Bundle** (`--all` only) — every written addon directory is zipped
+   together into one umbrella archive at
+   `dist/<expansion>/Guidelime_<AUTHOR>_RepGuides-<expansion>-v<version>.zip`,
+   with each addon as a top-level folder and a bundle-level `README.md`
+   at the zip root. `QUALITY_REPORT.md` is excluded. A paste-ready
+   CurseForge project description is written next to the zip as
+   `CURSEFORGE_DESCRIPTION.md`.
 
 ## Routing in detail
 
@@ -389,6 +405,8 @@ guides_generator/
         names.py                       # addon folder + .toc Title naming
         expansions.py                  # per-expansion display labels
         toc.py          changelog.py   readme.py        writer.py
+        zipper.py                      # bundle every addon dir into one zip
+        curseforge.py                  # bundle README + project-page markdown
     pipeline/                          # CLI orchestration
         loader.py                      # shared DB loaders + build-and-write
         single.py                      # interactive / --faction
@@ -412,7 +430,7 @@ Public entry points per package:
 | `zones` | `assign_primary_zone`, `is_self_contained`, `group_by_zone_and_tier`, `get_zone_tier` |
 | `routing` | `route_subguide`, `pick_start_position`, `pick_start_candidates`, `compute_tour_stats`, `Stop`, `TourEntry` |
 | `output` | `generate_guide`, `GuideEmitter` |
-| `addon` | `write_addon`, `zip_addon`, `read_changelog`, `addon_name_for_faction`, `guide_title_for_faction` |
+| `addon` | `write_addon`, `zip_addon_bundle`, `bundle_zip_path`, `build_bundle_readme`, `build_curseforge_description`, `write_curseforge_description`, `read_changelog`, `addon_name_for_faction`, `guide_title_for_faction` |
 | `pipeline` | `run_single`, `run_all` |
 | `report` | `write_addon_report`, `write_global_report` |
 | `prompts` | `prompt_faction`, `prompt_expansion` |

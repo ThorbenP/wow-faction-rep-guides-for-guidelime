@@ -23,6 +23,18 @@ def build_readme(
         f'In-game reputation farming guide for **{faction_name}** on '
         f'**{expansion_label}**, delivered as a **GuideLime** sub-addon.',
         '',
+        '## Part of the rep-guides bundle',
+        '',
+        f'This folder ships as one entry in the *Guidelime {AUTHOR} - '
+        f'Reputation Farm Guides* bundle on CurseForge — a single download'
+        f' that contains one folder per faction. Every folder is its own'
+        f' addon and is independently toggleable in the WoW AddOns list, so'
+        f' you can extract the whole bundle into `Interface/AddOns/` and'
+        f' enable only the factions you actually farm; the others sit on'
+        f' disk without ever loading. This README describes only the'
+        f' **{faction_name}** addon — see the bundle-level `README.md` at'
+        f' the zip root for the full faction list.',
+        '',
         '## Support the project',
         '',
         "If these guides save you time and you'd like to say thanks, you can buy me a",

@@ -3,15 +3,14 @@
 CurseForge moderation rejects multiple similar projects from the same
 author ("Fair Play" rule in their moderation policies), so the 30 rep
 guides ship as one umbrella project rather than 30 separate ones. This
-module builds the two markdown documents that pair with the bundled
-zip:
+module builds the project-page text that pairs with the bundled zip:
 
-- `build_bundle_readme` — `README.md` written into the zip root, so a
-  player who downloads the bundle gets a one-stop install guide and a
-  pointer to the per-faction folders for the details.
 - `build_curseforge_description` — paste-ready markdown for the project
   page on CurseForge. Listed by faction group so the page mirrors the
-  in-game addon list.
+  in-game addon list. Carries the install instructions (CurseForge App
+  vs manual unzip, plus the wrapper-folder gotcha) since the zip itself
+  cannot include a top-level `README.md` — CurseForge's upload validator
+  rejects loose files at the archive root.
 - `write_curseforge_description` — drops the project-page text next to
   the bundle zip in `dist/<expansion>/`.
 """
@@ -23,7 +22,7 @@ from ..constants import (
     AUTHOR, DIST_DIR, FACTION_GROUPS, FACTION_NAMES, INTERFACE_VERSION,
     REPO_URL,
 )
-from .expansions import EXPANSION_ADDON_FOLDER, EXPANSION_LABEL
+from .expansions import EXPANSION_LABEL
 from .names import addon_name_for_faction
 from .zipper import BUNDLE_PREFIX
 
@@ -63,107 +62,6 @@ def _faction_table(expansion: str) -> list[str]:
             out.append(f'| {fname} | `{addon_name_for_faction(fname)}` |')
         out.append('')
     return out
-
-
-def build_bundle_readme(expansion: str, version: str) -> str:
-    """README that lands at the zip root — explains what the bundle is,
-    how to install, and how to enable only the factions you want."""
-    expansion_label = EXPANSION_LABEL.get(expansion, expansion.upper())
-    interface = INTERFACE_VERSION[expansion]
-    addons_folder = EXPANSION_ADDON_FOLDER.get(expansion, '_classic_')
-    n_factions = sum(len(ids) for _, ids in _bundled_factions(expansion))
-
-    lines = [
-        f"# Guidelime {AUTHOR} - Reputation Farm Guides ({expansion_label})",
-        '',
-        f'Bundle of **{n_factions} GuideLime sub-addons**, one per WoW '
-        f'reputation faction available on **{expansion_label}** '
-        f'(Interface `{interface}`). Bundle version **v{version}**.',
-        '',
-        '## What is in this archive',
-        '',
-        'Each top-level folder is a standalone GuideLime sub-addon for one'
-        ' faction. The bundle exists to keep the project as a single'
-        ' CurseForge upload — once installed, every folder behaves like an'
-        ' independent addon, with its own toggle in the WoW AddOns list.',
-        '',
-        '## Installation',
-        '',
-        '**Prerequisite**: make sure'
-        ' [GuideLime](https://www.curseforge.com/wow/addons/guidelime)'
-        ' is installed and enabled — every folder in this bundle is a'
-        ' GuideLime sub-addon and depends on it.',
-        '',
-        '### Recommended: CurseForge desktop app',
-        '',
-        'The CurseForge app understands multi-folder bundles natively. Install'
-        ' via the app and every faction guide lands in the right place — no'
-        ' manual file moving required.',
-        '',
-        '### Manual install (downloaded zip)',
-        '',
-        'When you extract the zip, your unzipper will usually create a wrapper'
-        f' folder named like `{BUNDLE_PREFIX}-{expansion}-v{version}/`'
-        ' containing this `README.md` and the per-faction addon folders. The'
-        ' wrapper folder is **not** the addon — WoW only sees addons that sit'
-        f' directly inside `Interface/AddOns/`.',
-        '',
-        'Open the wrapper folder and copy **the addon folders inside it**'
-        f' (each named `Guidelime_{AUTHOR}_<Faction>RepGuide`) into:',
-        '',
-        f'`World of Warcraft/{addons_folder}/Interface/AddOns/`',
-        '',
-        'Do **not** copy the wrapper folder itself or this `README.md`. After'
-        ' copying you should see something like:',
-        '',
-        '```',
-        'Interface/AddOns/',
-        '├── Guidelime/                                 ← the parent addon',
-        f'├── Guidelime_{AUTHOR}_DarnassusRepGuide/         ✅',
-        f'├── Guidelime_{AUTHOR}_OrgrimmarRepGuide/         ✅',
-        '└── ...',
-        '',
-        'NOT:',
-        '',
-        'Interface/AddOns/',
-        f'└── {BUNDLE_PREFIX}-{expansion}-v{version}/    ❌ extra layer, WoW',
-        f'    ├── Guidelime_{AUTHOR}_DarnassusRepGuide/         won\'t load anything',
-        '    └── ...',
-        '```',
-        '',
-        '### After install',
-        '',
-        '1. Open the WoW AddOns screen and enable **only the factions you'
-        ' plan to farm**. Disabled folders never load, so the GuideLime guide'
-        ' list stays clean.',
-        '2. Launch WoW, open `/guidelime`, pick the faction guide and the zone'
-        ' sub-guide that matches your level.',
-        '',
-        '## Bundled factions',
-        '',
-        'Each folder ships with its own README, CHANGELOG and LICENSE so it'
-        ' stays self-contained if you copy a single folder somewhere else.',
-        '',
-        *_faction_table(expansion),
-        '## Notes',
-        '',
-        '- **Auto-generated**: every guide is produced programmatically from'
-        ' the [Questie](https://github.com/Questie/Questie) database rather'
-        ' than written by hand. Coverage is broad and consistent, but'
-        ' individual quests can occasionally have an odd waypoint or a'
-        ' sub-optimal route.',
-        f'- **Source code & bug reports**: <{REPO_URL}>',
-        f'- **Support the project (optional)**: ☕ <{SUPPORT_LINK}>',
-        '',
-        '## License',
-        '',
-        'Each addon folder bundles its own GPL-3.0 LICENSE. The full text is'
-        ' also at <https://www.gnu.org/licenses/gpl-3.0.html>. GPL-3.0 is'
-        ' chosen so the addons stay license-compatible with **GuideLime**'
-        ' (GPL-2.0-or-later).',
-        '',
-    ]
-    return '\n'.join(lines)
 
 
 def build_curseforge_description(expansion: str, version: str) -> str:
@@ -219,14 +117,53 @@ def build_curseforge_description(expansion: str, version: str) -> str:
         '',
         '## Installation',
         '',
-        '1. Install [GuideLime](https://www.curseforge.com/wow/addons/guidelime).',
-        '2. Drop the contents of this zip into your `Interface/AddOns/`'
-        ' directory — every top-level folder is a standalone GuideLime'
-        ' sub-addon.',
-        '3. Enable only the factions you intend to farm in the WoW AddOns'
-        ' screen. Anything you leave disabled never loads.',
-        '4. Open `/guidelime`, pick the faction guide, then the zone'
-        ' sub-guide that matches your level.',
+        '**Prerequisite**: install'
+        ' [GuideLime](https://www.curseforge.com/wow/addons/guidelime).'
+        ' Every folder in this bundle is a GuideLime sub-addon and depends'
+        ' on it.',
+        '',
+        '### Recommended: CurseForge desktop app',
+        '',
+        'The CurseForge app understands multi-folder bundles natively. Install'
+        ' via the app and every faction guide lands in the right place — no'
+        ' manual file moving required.',
+        '',
+        '### Manual install (downloaded zip)',
+        '',
+        'Most unzippers create a wrapper folder named like'
+        f' `{BUNDLE_PREFIX}-{expansion}-v{version}/` when extracting,'
+        ' containing the per-faction addon folders. **WoW does not see**'
+        ' that wrapper — it only loads addons that sit directly inside'
+        ' `Interface/AddOns/`.',
+        '',
+        'Open the wrapper folder and copy **the addon folders inside it**'
+        f' (each named `Guidelime_{AUTHOR}_<Faction>RepGuide`) into your'
+        ' WoW AddOns directory. Do **not** copy the wrapper folder itself.',
+        '',
+        'After copying you should see something like:',
+        '',
+        '```',
+        'Interface/AddOns/',
+        '├── Guidelime/                                 ← the parent addon',
+        f'├── Guidelime_{AUTHOR}_DarnassusRepGuide/         ✅',
+        f'├── Guidelime_{AUTHOR}_OrgrimmarRepGuide/         ✅',
+        '└── ...',
+        '',
+        'NOT:',
+        '',
+        'Interface/AddOns/',
+        f'└── {BUNDLE_PREFIX}-{expansion}-v{version}/    ❌ extra layer, WoW',
+        f'    ├── Guidelime_{AUTHOR}_DarnassusRepGuide/         won\'t load anything',
+        '    └── ...',
+        '```',
+        '',
+        '### After install',
+        '',
+        '1. Open the WoW AddOns screen and enable **only the factions you'
+        ' intend to farm**. Anything you leave disabled never loads, so the'
+        ' GuideLime guide list stays clean.',
+        '2. Launch WoW, open `/guidelime`, pick the faction guide, then the'
+        ' zone sub-guide that matches your level.',
         '',
         '## Bundled factions',
         '',

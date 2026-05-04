@@ -92,12 +92,19 @@ dist/
 └── tbc/
     ├── Guidelime_ThPi_RepGuides-tbc-v<version>.zip   (one umbrella bundle:
     │                                                  every faction folder
-    │                                                  at the zip root +
-    │                                                  a top-level README.md;
-    │                                                  no QUALITY_REPORT.md)
+    │                                                  at the zip root and
+    │                                                  *nothing else* — no
+    │                                                  loose files, since
+    │                                                  CurseForge rejects
+    │                                                  archives that have
+    │                                                  files at the root;
+    │                                                  no QUALITY_REPORT.md
+    │                                                  inside any folder)
     └── CURSEFORGE_DESCRIPTION.md                     (paste-ready markdown
                                                        for the CurseForge
-                                                       project page)
+                                                       project page —
+                                                       carries the install
+                                                       instructions)
 ```
 
 CurseForge moderation rejects multiple similar projects from the same
@@ -216,8 +223,9 @@ brackets — those would parse as another tag):
 9. **Bundle** (`--all` only) — every written addon directory is zipped
    together into one umbrella archive at
    `dist/<expansion>/Guidelime_<AUTHOR>_RepGuides-<expansion>-v<version>.zip`,
-   with each addon as a top-level folder and a bundle-level `README.md`
-   at the zip root. `QUALITY_REPORT.md` is excluded. A paste-ready
+   with each addon as a top-level folder and *no* loose files at the
+   zip root (CurseForge's upload validator rejects those).
+   `QUALITY_REPORT.md` is excluded. A paste-ready
    CurseForge project description is written next to the zip as
    `CURSEFORGE_DESCRIPTION.md`.
 
@@ -430,7 +438,7 @@ Public entry points per package:
 | `zones` | `assign_primary_zone`, `is_self_contained`, `group_by_zone_and_tier`, `get_zone_tier` |
 | `routing` | `route_subguide`, `pick_start_position`, `pick_start_candidates`, `compute_tour_stats`, `Stop`, `TourEntry` |
 | `output` | `generate_guide`, `GuideEmitter` |
-| `addon` | `write_addon`, `zip_addon_bundle`, `bundle_zip_path`, `build_bundle_readme`, `build_curseforge_description`, `write_curseforge_description`, `read_changelog`, `addon_name_for_faction`, `guide_title_for_faction` |
+| `addon` | `write_addon`, `zip_addon_bundle`, `bundle_zip_path`, `build_curseforge_description`, `write_curseforge_description`, `read_changelog`, `addon_name_for_faction`, `guide_title_for_faction` |
 | `pipeline` | `run_single`, `run_all` |
 | `report` | `write_addon_report`, `write_global_report` |
 | `prompts` | `prompt_faction`, `prompt_expansion` |

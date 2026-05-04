@@ -2,12 +2,15 @@
 
 Produces a single archive at
 `<DIST_DIR>/<expansion>/Guidelime_<AUTHOR>_RepGuides-<expansion>-v<version>.zip`,
-containing every generated addon directory at the top level (so a
-player can drag-extract straight into `Interface/AddOns/` and every
-folder becomes its own standalone addon).
+containing every generated addon directory at the top level — and
+nothing else. CurseForge's upload validator rejects archives that have
+loose files at the zip root ("WoW addons must be packaged so that all
+files are inside a root folder"), so this builder writes folders only.
+Install instructions for the bundle live on the CurseForge project
+page (`build_curseforge_description`), not inside the zip.
 
-CurseForge moderation rejects multiple similar projects from the same
-author under the "Fair Play" rule — see
+CurseForge moderation also rejects multiple similar projects from the
+same author under the "Fair Play" rule — see
 https://support.curseforge.com/en/support/solutions/articles/9000197279
 — so the project ships as one umbrella zip rather than 30 separate
 downloads. Inside the zip the umbrella structure follows the same
@@ -46,24 +49,19 @@ def zip_addon_bundle(
     addon_dirs: Sequence[str],
     expansion: str,
     version: str,
-    bundle_readme: str | None = None,
 ) -> str:
     """Bundle every directory in `addon_dirs` into a single archive at
     `bundle_zip_path(expansion, version)` and return its absolute path.
 
-    Each addon directory becomes a top-level folder inside the zip — the
-    layout a CurseForge multi-folder umbrella project expects.
-    `QUALITY_REPORT.md` is excluded from every folder.
-
-    `bundle_readme`, when provided, is written into the zip root as
-    `README.md` so the archive is self-describing on download.
+    Each addon directory becomes a top-level folder inside the zip and
+    nothing else lives at the zip root — that is the layout CurseForge's
+    upload validator requires for multi-folder addons. `QUALITY_REPORT.md`
+    is excluded from every folder.
     """
     zip_path = bundle_zip_path(expansion, version)
     os.makedirs(os.path.dirname(zip_path), exist_ok=True)
 
     with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zf:
-        if bundle_readme is not None:
-            zf.writestr('README.md', bundle_readme)
         for addon_dir in addon_dirs:
             addon_name = os.path.basename(os.path.normpath(addon_dir))
             for entry in sorted(os.listdir(addon_dir)):

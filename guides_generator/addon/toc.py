@@ -18,7 +18,10 @@ def build_toc(
         f'## Author: {AUTHOR}',
         f'## Version: {version}',
         '## Dependencies: Guidelime',
+        '## DefaultState: Enabled',
+        '## LoadOnDemand: 0',
         '## X-Category: Quests',
+        '## X-License: GPL-3.0-or-later',
         '',
         f'{addon_name}.lua',
     ]

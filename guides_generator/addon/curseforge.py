@@ -11,8 +11,11 @@ module builds the project-page text that pairs with the bundled zip:
   vs manual unzip, plus the wrapper-folder gotcha) since the zip itself
   cannot include a top-level `README.md` — CurseForge's upload validator
   rejects loose files at the archive root.
-- `write_curseforge_description` — drops the project-page text next to
-  the bundle zip in `dist/<expansion>/`.
+- `build_curseforge_summary` — one-line text for the CurseForge
+  "Summary" form field. CurseForge requires summaries to be distinct
+  from the description and to focus on what the project does.
+- `write_curseforge_description` / `write_curseforge_summary` — drop
+  the two artefacts next to the bundle zip in `dist/<expansion>/`.
 """
 from __future__ import annotations
 
@@ -28,6 +31,7 @@ from .zipper import BUNDLE_PREFIX
 
 
 CURSEFORGE_DESCRIPTION_FILENAME = 'CURSEFORGE_DESCRIPTION.md'
+CURSEFORGE_SUMMARY_FILENAME = 'CURSEFORGE_SUMMARY.txt'
 
 SUPPORT_LINK = 'https://buymeacoffee.com/thpi'
 
@@ -211,4 +215,31 @@ def write_curseforge_description(expansion: str, version: str) -> str:
     out_path = os.path.join(dist_root, CURSEFORGE_DESCRIPTION_FILENAME)
     with open(out_path, 'w', encoding='utf-8') as f:
         f.write(build_curseforge_description(expansion, version))
+    return out_path
+
+
+def build_curseforge_summary(expansion: str) -> str:
+    """One-sentence summary for the CurseForge "Summary" form field.
+
+    CurseForge requires summaries to be distinct from the project
+    description and to focus on what the project does rather than who
+    or how. Generated as a single line so it can be pasted directly.
+    """
+    expansion_label = EXPANSION_LABEL.get(expansion, expansion.upper())
+    return (
+        f'Auto-generated reputation farming guides for every '
+        f'{expansion_label} faction, delivered as GuideLime sub-addons '
+        f'(one folder per faction).'
+    )
+
+
+def write_curseforge_summary(expansion: str) -> str:
+    """Write the one-line CurseForge summary to
+    `<DIST_DIR>/<expansion>/CURSEFORGE_SUMMARY.txt` and return the
+    written path."""
+    dist_root = os.path.join(os.path.abspath(DIST_DIR), expansion)
+    os.makedirs(dist_root, exist_ok=True)
+    out_path = os.path.join(dist_root, CURSEFORGE_SUMMARY_FILENAME)
+    with open(out_path, 'w', encoding='utf-8') as f:
+        f.write(build_curseforge_summary(expansion) + '\n')
     return out_path

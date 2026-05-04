@@ -4,7 +4,8 @@ from __future__ import annotations
 import os
 
 from ..addon import (
-    read_changelog, write_curseforge_description, zip_addon_bundle,
+    read_changelog, write_curseforge_description, write_curseforge_summary,
+    zip_addon_bundle,
 )
 from ..constants import ADDONS_DIR, CHANGELOG_DIR, FACTION_NAMES
 from ..coords import attach_coords
@@ -70,5 +71,7 @@ def run_all(expansion: str) -> None:
     if addon_paths:
         zip_path = zip_addon_bundle(addon_paths, expansion, version)
         cf_path = write_curseforge_description(expansion, version)
+        cf_summary_path = write_curseforge_summary(expansion)
         print(f'bundle archive: {zip_path}')
         print(f'curseforge description: {cf_path}')
+        print(f'curseforge summary: {cf_summary_path}')

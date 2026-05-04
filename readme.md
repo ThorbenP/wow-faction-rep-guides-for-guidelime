@@ -100,11 +100,14 @@ dist/
     │                                                  files at the root;
     │                                                  no QUALITY_REPORT.md
     │                                                  inside any folder)
-    └── CURSEFORGE_DESCRIPTION.md                     (paste-ready markdown
-                                                       for the CurseForge
-                                                       project page —
-                                                       carries the install
-                                                       instructions)
+    ├── CURSEFORGE_DESCRIPTION.md                     (paste-ready markdown
+    │                                                  for the CurseForge
+    │                                                  project page —
+    │                                                  carries the install
+    │                                                  instructions)
+    └── CURSEFORGE_SUMMARY.txt                         (one-line summary for
+                                                       the CurseForge
+                                                       "Summary" form field)
 ```
 
 CurseForge moderation rejects multiple similar projects from the same
@@ -225,9 +228,10 @@ brackets — those would parse as another tag):
    `dist/<expansion>/Guidelime_<AUTHOR>_RepGuides-<expansion>-v<version>.zip`,
    with each addon as a top-level folder and *no* loose files at the
    zip root (CurseForge's upload validator rejects those).
-   `QUALITY_REPORT.md` is excluded. A paste-ready
-   CurseForge project description is written next to the zip as
-   `CURSEFORGE_DESCRIPTION.md`.
+   `QUALITY_REPORT.md` is excluded. Two CurseForge artefacts are
+   written next to the zip: `CURSEFORGE_DESCRIPTION.md` (paste-ready
+   markdown for the project page) and `CURSEFORGE_SUMMARY.txt` (the
+   one-line "Summary" form field).
 
 ## Routing in detail
 
@@ -438,7 +442,7 @@ Public entry points per package:
 | `zones` | `assign_primary_zone`, `is_self_contained`, `group_by_zone_and_tier`, `get_zone_tier` |
 | `routing` | `route_subguide`, `pick_start_position`, `pick_start_candidates`, `compute_tour_stats`, `Stop`, `TourEntry` |
 | `output` | `generate_guide`, `GuideEmitter` |
-| `addon` | `write_addon`, `zip_addon_bundle`, `bundle_zip_path`, `build_curseforge_description`, `write_curseforge_description`, `read_changelog`, `addon_name_for_faction`, `guide_title_for_faction` |
+| `addon` | `write_addon`, `zip_addon_bundle`, `bundle_zip_path`, `build_curseforge_description`, `write_curseforge_description`, `build_curseforge_summary`, `write_curseforge_summary`, `read_changelog`, `addon_name_for_faction`, `guide_title_for_faction` |
 | `pipeline` | `run_single`, `run_all` |
 | `report` | `write_addon_report`, `write_global_report` |
 | `prompts` | `prompt_faction`, `prompt_expansion` |

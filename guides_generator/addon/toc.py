@@ -18,7 +18,7 @@ def build_toc(
         f'## Author: {AUTHOR}',
         f'## Version: {version}',
         '## Dependencies: Guidelime',
-        '## DefaultState: Enabled',
+        '## DefaultState: disabled',
         '## LoadOnDemand: 0',
         '## X-Category: Quests',
         '## X-License: GPL-3.0-or-later',

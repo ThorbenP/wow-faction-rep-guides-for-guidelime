@@ -89,6 +89,17 @@ def build_curseforge_description(expansion: str, version: str) -> str:
         '',
         f'Bundle version **v{version}** · Interface `{interface}`.',
         '',
+        '> ## ⚠️ Read this first — enable the guides you want',
+        '>',
+        '> To keep your GuideLime list clean, **every faction in this bundle'
+        ' ships DISABLED by default**. Installing the addon does not flood'
+        ' your guide list — until you enable a faction, nothing of this'
+        ' bundle shows up in `/guidelime`.',
+        '>',
+        '> **Open WoW\'s AddOns screen and enable only the factions you'
+        ' actually want to farm.** Disabled factions never load, so your'
+        ' guide list stays short and your memory footprint small.',
+        '',
         '## Why one bundle?',
         '',
         'Every faction is a self-contained GuideLime sub-addon, but they all '
@@ -96,8 +107,8 @@ def build_curseforge_description(expansion: str, version: str) -> str:
         'page stays a single place to look for updates. Inside the WoW '
         'AddOns screen they remain individually toggleable: only enabled '
         "factions load, and only their guides appear in GuideLime's list — "
-        'so disabling Sporeggar and Ogri\'la (for instance) keeps your guide '
-        'feed clean if you only farm capitals.',
+        "so if you only farm capital-city reps you simply leave the rest "
+        'disabled and your guide feed stays clean.',
         '',
         '## Features',
         '',
@@ -163,9 +174,10 @@ def build_curseforge_description(expansion: str, version: str) -> str:
         '',
         '### After install',
         '',
-        '1. Open the WoW AddOns screen and enable **only the factions you'
-        ' intend to farm**. Anything you leave disabled never loads, so the'
-        ' GuideLime guide list stays clean.',
+        '1. Open the WoW AddOns screen. **Every faction in this bundle is'
+        ' disabled by default** — tick the checkbox next to each faction you'
+        ' actually intend to farm. Anything you leave disabled never loads,'
+        ' so the GuideLime guide list stays clean.',
         '2. Launch WoW, open `/guidelime`, pick the faction guide, then the'
         ' zone sub-guide that matches your level.',
         '',
